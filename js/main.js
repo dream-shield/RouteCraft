@@ -219,6 +219,23 @@
         this.showEditSuggestions = false;
       },
 
+      handleGlobalPointerDown(event) {
+        const target = event.target;
+        if (!target.closest(".autocomplete-add")) {
+          this.showAddSuggestions = false;
+        }
+        if (!target.closest(".autocomplete-edit")) {
+          this.showEditSuggestions = false;
+        }
+      },
+
+      handleGlobalKeyDown(event) {
+        if (event.key === "Escape") {
+          this.showAddSuggestions = false;
+          this.showEditSuggestions = false;
+        }
+      },
+
       deleteStop(index) {
         if (index < 0 || index >= this.stops.length) return;
         if (!confirm("Remove this stop from the itinerary?")) return;
@@ -271,6 +288,20 @@
     mounted() {
       this.initMap();
       this.initSortable();
+
+      this._onDocPointerDown = (event) => this.handleGlobalPointerDown(event);
+      this._onDocKeyDown = (event) => this.handleGlobalKeyDown(event);
+      document.addEventListener("pointerdown", this._onDocPointerDown, true);
+      document.addEventListener("keydown", this._onDocKeyDown, true);
+    },
+
+    beforeUnmount() {
+      if (this._onDocPointerDown) {
+        document.removeEventListener("pointerdown", this._onDocPointerDown, true);
+      }
+      if (this._onDocKeyDown) {
+        document.removeEventListener("keydown", this._onDocKeyDown, true);
+      }
     }
   }).mount("#app");
 })();
