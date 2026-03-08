@@ -17,6 +17,7 @@
         addSuggestions: [],
         addHighlighted: -1,
         showAddSuggestions: false,
+        addMenuOpen: false,
 
         editingStopId: null,
         editForm: RouteCraft.createEmptyForm(),
@@ -151,6 +152,14 @@
         this.addSuggestions = [];
         this.addHighlighted = -1;
         this.showAddSuggestions = false;
+        this.addMenuOpen = false;
+      },
+
+      toggleAddMenu() {
+        this.addMenuOpen = !this.addMenuOpen;
+        if (!this.addMenuOpen) {
+          this.showAddSuggestions = false;
+        }
       },
 
       startEdit(stop) {
@@ -221,6 +230,9 @@
 
       handleGlobalPointerDown(event) {
         const target = event.target;
+        if (!target.closest(".add-stop-menu")) {
+          this.addMenuOpen = false;
+        }
         if (!target.closest(".autocomplete-add")) {
           this.showAddSuggestions = false;
         }
@@ -231,6 +243,7 @@
 
       handleGlobalKeyDown(event) {
         if (event.key === "Escape") {
+          this.addMenuOpen = false;
           this.showAddSuggestions = false;
           this.showEditSuggestions = false;
         }

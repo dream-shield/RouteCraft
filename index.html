@@ -22,7 +22,7 @@
             <p class="text-sm text-slate-600">Inline edit stops, search places with autocomplete, and drag to reorder.</p>
           </header>
 
-          <div class="sticky top-2 z-30 mb-4 rounded-xl border border-slate-200 bg-white/90 p-3 shadow-sm backdrop-blur">
+          <div class="sticky top-2 z-30 mb-4 rounded-xl border border-slate-200 bg-white/90 p-3 shadow-sm backdrop-blur add-stop-menu">
             <div class="mb-2 flex gap-2">
               <button
                 type="button"
@@ -40,9 +40,18 @@
               >
                 Next
               </button>
+              <button
+                type="button"
+                class="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                @click="toggleAddMenu"
+                aria-label="Toggle add destination menu"
+                title="Add destination"
+              >
+                +
+              </button>
             </div>
 
-            <div class="space-y-2">
+            <div v-if="addMenuOpen" class="space-y-2">
               <div class="relative autocomplete-add">
                 <input
                   v-model.trim="addForm.query"
