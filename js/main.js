@@ -2,6 +2,7 @@
   const { createApp, nextTick } = Vue;
   const RouteCraft = window.RouteCraft;
   const mapManager = RouteCraft.createMapManager(maplibregl);
+  const STORAGE_KEY = "routecraft_itinerary_v1";
 
   createApp({
     data() {
@@ -39,6 +40,147 @@
     },
 
     methods: {
+      sanitizeStops(rawStops) {
+        if (!Array.isArray(rawStops)) return [];
+        return rawStops
+          .map((stop) => ({
+            id: Number.isFinite(Number(stop.id)) ? Number(stop.id) : null,
+            title: String(stop.title || "").trim(),
+            description: String(stop.description || "").trim(),
+            longitude: Number(stop.longitude),
+            latitude: Number(stop.latitude),
+            zoomLevel: RouteCraft.clampZoom(stop.zoomLevel),
+            searchQuery: String(stop.searchQuery || stop.title || "").trim()
+          }))
+          .filter((stop) => stop.title && Number.isFinite(stop.longitude) && Number.isFinite(stop.latitude));
+      },
+
+      updateStopIdsAndNextId() {
+        this.stops = this.stops.map((stop, idx) => ({ ...stop, id: idx + 1 }));
+        this.nextId = this.stops.length + 1;
+      },
+
+      saveToLocalStorage() {
+        const payload = {
+          stops: this.stops,
+          activeIndex: this.activeIndex
+        };
+
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      },
+
+      escapeXml(text) {
+        return String(text || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/\"/g, "&quot;")
+          .replace(/'/g, "&apos;");
+      },
+
+      exportKml() {
+        if (!this.stops.length) {
+          alert("No stops to export.");
+          return;
+        }
+
+        const placemarks = this.stops
+          .map(
+            (stop) => `    <Placemark>
+      <name>${this.escapeXml(stop.title)}</name>
+      <description>${this.escapeXml(stop.description || "")}</description>
+      <Point>
+        <coordinates>${stop.longitude},${stop.latitude},0</coordinates>
+      </Point>
+    </Placemark>`
+          )
+          .join("\n");
+
+        const kml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>RouteCraft Itinerary</name>
+${placemarks}
+  </Document>
+</kml>`;
+
+        const blob = new Blob([kml], { type: "application/vnd.google-earth.kml+xml;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "routecraft-itinerary.kml";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      },
+
+      triggerKmlImport() {
+        if (this.$refs.kmlFileInput) {
+          this.$refs.kmlFileInput.click();
+        }
+      },
+
+      async importKmlFile(event) {
+        const file = event?.target?.files?.[0];
+        if (!file) return;
+
+        try {
+          const text = await file.text();
+          const doc = new DOMParser().parseFromString(text, "application/xml");
+          const parseError = doc.querySelector("parsererror");
+          if (parseError) {
+            alert("Invalid KML file.");
+            return;
+          }
+
+          const placemarks = Array.from(doc.getElementsByTagName("Placemark"));
+          const imported = [];
+
+          placemarks.forEach((placemark, idx) => {
+            const name = placemark.getElementsByTagName("name")[0]?.textContent?.trim() || `Stop ${idx + 1}`;
+            const description = placemark.getElementsByTagName("description")[0]?.textContent?.trim() || "";
+            const coordinatesText = placemark
+              .getElementsByTagName("coordinates")[0]
+              ?.textContent?.trim();
+
+            if (!coordinatesText) return;
+            const firstCoord = coordinatesText.split(/\s+/)[0];
+            const [lonText, latText] = firstCoord.split(",");
+            const longitude = Number(lonText);
+            const latitude = Number(latText);
+            if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) return;
+
+            imported.push({
+              id: idx + 1,
+              title: name,
+              description,
+              longitude,
+              latitude,
+              zoomLevel: 12,
+              searchQuery: name
+            });
+          });
+
+          if (!imported.length) {
+            alert("No valid placemarks found in KML.");
+            return;
+          }
+
+          this.stops = imported;
+          this.updateStopIdsAndNextId();
+          this.activeIndex = 0;
+          this.syncMapData();
+          this.flyToStop(0, false);
+        } catch (error) {
+          alert("Failed to import KML.");
+        } finally {
+          if (event?.target) {
+            event.target.value = "";
+          }
+        }
+      },
+
       initMap() {
         const firstStop = this.stops[0] || { longitude: -98.58, latitude: 39.82, zoomLevel: 3.8 };
         this.map = mapManager.create("map", firstStop);
@@ -302,7 +444,37 @@
       }
     },
 
+    watch: {
+      stops: {
+        handler() {
+          this.saveToLocalStorage();
+        },
+        deep: true
+      },
+      activeIndex() {
+        this.saveToLocalStorage();
+      }
+    },
+
     mounted() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const sanitized = this.sanitizeStops(parsed.stops);
+          if (sanitized.length) {
+            this.stops = sanitized;
+            this.updateStopIdsAndNextId();
+            this.activeIndex = Math.min(
+              Math.max(Number(parsed.activeIndex) || 0, 0),
+              this.stops.length - 1
+            );
+          }
+        }
+      } catch (error) {
+        // Ignore invalid saved payloads and fall back to defaults.
+      }
+
       this.initMap();
       this.initSortable();
 

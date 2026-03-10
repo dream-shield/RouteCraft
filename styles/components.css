@@ -1,6 +1,7 @@
 .drag-handle {
   cursor: grab;
   user-select: none;
+  touch-action: none;
 }
 
 .drag-handle:active {
