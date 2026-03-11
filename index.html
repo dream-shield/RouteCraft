@@ -53,33 +53,6 @@
             <div class="mb-2 flex gap-2">
               <button
                 type="button"
-                class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                :disabled="activeIndex <= 0"
-                @click="goPrev"
-              >
-                Prev
-              </button>
-              <button
-                type="button"
-                class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                :disabled="activeIndex >= stops.length - 1 || stops.length === 0"
-                @click="goNext"
-              >
-                Next
-              </button>
-              <button
-                type="button"
-                class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white hover:bg-blue-700"
-                @click="toggleAddMenu"
-                aria-label="Toggle add destination menu"
-                title="Add destination"
-              >
-                <span class="material-symbols-outlined text-base leading-none">add_circle</span>
-              </button>
-            </div>
-            <div class="mb-2 flex flex-wrap gap-2">
-              <button
-                type="button"
                 class="rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold hover:bg-slate-50"
                 @click="copyShareLink"
                 aria-label="Copy share link"
@@ -105,14 +78,39 @@
               >
                 <span class="material-symbols-outlined text-base leading-none">upload</span>
               </button>
-              <input
-                ref="kmlFileInput"
-                type="file"
-                accept=".kml,application/vnd.google-earth.kml+xml,application/xml,text/xml"
-                class="hidden"
-                @change="importKmlFile"
-              />
+              <button
+                type="button"
+                class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                :disabled="activeIndex <= 0"
+                @click="goPrev"
+              >
+                Prev
+              </button>
+              <button
+                type="button"
+                class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                :disabled="activeIndex >= stops.length - 1 || stops.length === 0"
+                @click="goNext"
+              >
+                Next
+              </button>
+              <button
+                type="button"
+                class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                @click="toggleAddMenu"
+                aria-label="Toggle add destination menu"
+                title="Add destination"
+              >
+                <span class="material-symbols-outlined text-base leading-none">add_circle</span>
+              </button>
             </div>
+            <input
+              ref="kmlFileInput"
+              type="file"
+              accept=".kml,application/vnd.google-earth.kml+xml,application/xml,text/xml"
+              class="hidden"
+              @change="importKmlFile"
+            />
 
             <div v-if="addMenuOpen" class="space-y-2">
               <div class="relative autocomplete-add">
