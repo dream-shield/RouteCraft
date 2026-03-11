@@ -8,6 +8,7 @@ RouteCraft is a browser-based travel itinerary planner that lets you search dest
 - Autocomplete place search (Photon)
 - Add, edit, delete, and drag-and-drop reorder stops
 - Auto-save and auto-load via localStorage
+- Shareable URL (hash) with compressed itinerary data
 - KML export and import
 - Responsive layout for desktop and mobile
 
@@ -18,6 +19,7 @@ RouteCraft is a browser-based travel itinerary planner that lets you search dest
 - Drag stops using the handle to reorder the itinerary.
 - The map animates to the active stop and updates the route line.
 - Your changes auto-save in the browser.
+- Use the link button to copy a shareable URL.
 
 ## Running Locally
 
@@ -62,6 +64,7 @@ todo.md
 
 - Autocomplete and map tiles require an internet connection.
 - localStorage is per-browser and per-device.
+- If both URL data and localStorage exist, you will be prompted to choose which to load.
 - KML import expects Placemark points with coordinates.
 
 ## License

@@ -3,6 +3,7 @@
   const RouteCraft = window.RouteCraft;
   const mapManager = RouteCraft.createMapManager(maplibregl);
   const STORAGE_KEY = "routecraft_itinerary_v1";
+  const HASH_KEY = "data";
 
   createApp({
     data() {
@@ -24,7 +25,13 @@
         editForm: RouteCraft.createEmptyForm(),
         editSuggestions: [],
         editHighlighted: -1,
-        showEditSuggestions: false
+        showEditSuggestions: false,
+
+        sourcePromptOpen: false,
+        pendingUrlData: null,
+        pendingLocalData: null,
+        suppressHashUpdate: false,
+        lastHashPayload: ""
       };
     },
 
@@ -67,6 +74,101 @@
         };
 
         localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      },
+
+      buildPayload() {
+        return {
+          stops: this.stops,
+          activeIndex: this.activeIndex
+        };
+      },
+
+      encodePayload(payload) {
+        return LZString.compressToEncodedURIComponent(JSON.stringify(payload));
+      },
+
+      decodePayload(encoded) {
+        try {
+          const json = LZString.decompressFromEncodedURIComponent(encoded);
+          if (!json) return null;
+          return JSON.parse(json);
+        } catch (error) {
+          return null;
+        }
+      },
+
+      getHashData() {
+        const hash = window.location.hash.replace(/^#/, "");
+        if (!hash) return null;
+        const params = new URLSearchParams(hash);
+        const encoded = params.get(HASH_KEY);
+        if (!encoded) return null;
+        return this.decodePayload(encoded);
+      },
+
+      setHashFromState() {
+        if (this.suppressHashUpdate) return;
+        const payload = this.buildPayload();
+        const encoded = this.encodePayload(payload);
+        if (encoded === this.lastHashPayload) return;
+        this.lastHashPayload = encoded;
+        const params = new URLSearchParams();
+        params.set(HASH_KEY, encoded);
+        window.history.replaceState(null, "", `#${params.toString()}`);
+      },
+
+      scheduleHashUpdate() {
+        if (this._hashTimer) {
+          clearTimeout(this._hashTimer);
+        }
+        this._hashTimer = setTimeout(() => {
+          this.setHashFromState();
+        }, 250);
+      },
+
+      applyLoadedData(payload) {
+        const sanitized = this.sanitizeStops(payload?.stops);
+        if (!sanitized.length) return false;
+        this.stops = sanitized;
+        this.updateStopIdsAndNextId();
+        this.activeIndex = Math.min(
+          Math.max(Number(payload.activeIndex) || 0, 0),
+          this.stops.length - 1
+        );
+        this.syncMapData();
+        if (this.activeIndex >= 0) {
+          this.flyToStop(this.activeIndex, false);
+        }
+        return true;
+      },
+
+      chooseUrlData() {
+        if (this.pendingUrlData && this.applyLoadedData(this.pendingUrlData)) {
+          this.saveToLocalStorage();
+          this.setHashFromState();
+        }
+        this.pendingUrlData = null;
+        this.pendingLocalData = null;
+        this.sourcePromptOpen = false;
+      },
+
+      chooseLocalData() {
+        if (this.pendingLocalData && this.applyLoadedData(this.pendingLocalData)) {
+          this.setHashFromState();
+        }
+        this.pendingUrlData = null;
+        this.pendingLocalData = null;
+        this.sourcePromptOpen = false;
+      },
+
+      copyShareLink() {
+        this.setHashFromState();
+        const url = window.location.href;
+        if (navigator.clipboard?.writeText) {
+          navigator.clipboard.writeText(url);
+        } else {
+          window.prompt("Copy this link:", url);
+        }
       },
 
       escapeXml(text) {
@@ -448,35 +550,53 @@ ${placemarks}
       stops: {
         handler() {
           this.saveToLocalStorage();
+          this.scheduleHashUpdate();
         },
         deep: true
       },
       activeIndex() {
         this.saveToLocalStorage();
+        this.scheduleHashUpdate();
       }
     },
 
     mounted() {
+      let urlPayload = null;
+      try {
+        urlPayload = this.getHashData();
+      } catch (error) {
+        urlPayload = null;
+      }
+
+      let localPayload = null;
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (raw) {
-          const parsed = JSON.parse(raw);
-          const sanitized = this.sanitizeStops(parsed.stops);
-          if (sanitized.length) {
-            this.stops = sanitized;
-            this.updateStopIdsAndNextId();
-            this.activeIndex = Math.min(
-              Math.max(Number(parsed.activeIndex) || 0, 0),
-              this.stops.length - 1
-            );
-          }
+          localPayload = JSON.parse(raw);
         }
       } catch (error) {
-        // Ignore invalid saved payloads and fall back to defaults.
+        localPayload = null;
+      }
+
+      const urlValid = this.sanitizeStops(urlPayload?.stops).length > 0;
+      const localValid = this.sanitizeStops(localPayload?.stops).length > 0;
+
+      if (urlValid && localValid) {
+        this.pendingUrlData = urlPayload;
+        this.pendingLocalData = localPayload;
+        this.sourcePromptOpen = true;
+      } else if (urlValid) {
+        this.applyLoadedData(urlPayload);
+        this.saveToLocalStorage();
+      } else if (localValid) {
+        this.applyLoadedData(localPayload);
+      } else if (window.location.hash) {
+        alert("URL data could not be loaded. Falling back to defaults.");
       }
 
       this.initMap();
       this.initSortable();
+      this.setHashFromState();
 
       this._onDocPointerDown = (event) => this.handleGlobalPointerDown(event);
       this._onDocKeyDown = (event) => this.handleGlobalKeyDown(event);
@@ -490,6 +610,9 @@ ${placemarks}
       }
       if (this._onDocKeyDown) {
         document.removeEventListener("keydown", this._onDocKeyDown, true);
+      }
+      if (this._hashTimer) {
+        clearTimeout(this._hashTimer);
       }
     }
   }).mount("#app");

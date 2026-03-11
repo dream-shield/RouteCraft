@@ -18,6 +18,32 @@
     <div class="grid h-full md:grid-cols-[40%_60%]">
       <section class="relative z-20 h-full overflow-y-auto border-r border-slate-200 bg-gradient-to-b from-slate-50 to-slate-100 p-4 pb-32">
         <div class="mx-auto max-w-2xl">
+          <div
+            v-if="sourcePromptOpen"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+          >
+            <div class="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
+              <h2 class="mb-2 text-lg font-semibold">Load itinerary</h2>
+              <p class="text-sm text-slate-600">We found data in the URL and local storage. Which one should we use?</p>
+              <div class="mt-4 flex gap-2">
+                <button
+                  type="button"
+                  class="flex-1 rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                  @click="chooseUrlData"
+                >
+                  Use URL
+                </button>
+                <button
+                  type="button"
+                  class="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold hover:bg-slate-50"
+                  @click="chooseLocalData"
+                >
+                  Use local
+                </button>
+              </div>
+            </div>
+          </div>
+
           <header class="mb-3">
             <h1 class="text-2xl font-bold tracking-tight">Travel Itinerary</h1>
             <p class="text-sm text-slate-600">Inline edit stops, search places with autocomplete, and drag to reorder.</p>
@@ -52,6 +78,15 @@
               </button>
             </div>
             <div class="mb-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                class="rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold hover:bg-slate-50"
+                @click="copyShareLink"
+                aria-label="Copy share link"
+                title="Copy share link"
+              >
+                <span class="material-symbols-outlined text-base leading-none">link</span>
+              </button>
               <button
                 type="button"
                 class="rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold hover:bg-slate-50"
@@ -223,6 +258,7 @@
   <script src="https://unpkg.com/maplibre-gl@5.1.0/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
 
   <script src="js/state.js" defer></script>
   <script src="js/utils.js" defer></script>
