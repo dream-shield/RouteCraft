@@ -341,8 +341,9 @@
             
             container.sortable = window.Sortable.create(container, {
               group: "stops",
-              handle: ".drag-handle",
               animation: 170,
+              filter: "button, input, textarea, .rc-exclude-drag",
+              preventOnFilter: false,
               onEnd: (e) => {
                 const stopId = Number.parseInt(e.item.id.replace("card-", ""));
                 const targetDayId = e.to.dataset.dayId;
