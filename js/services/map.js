@@ -46,12 +46,23 @@ window.RouteCraft = window.RouteCraft || {};
     stops.forEach((stop, index) => {
       const markerEl = document.createElement("div");
       markerEl.className = "custom-marker";
+      
       const color = routeColors[index % routeColors.length];
-      markerEl.style.background = color;
-      markerEl.style.boxShadow = `0 0 0 6px ${color}2B`;
-      markerEl.classList.add("is-dim");
+      
+      // High-Contrast Solid Styling
+      markerEl.style.backgroundColor = color;
+      markerEl.style.color = "#ffffff";
+      markerEl.style.borderColor = "#ffffff";
+      markerEl.style.borderStyle = 'solid';
+      markerEl.style.borderWidth = '2px';
+      
+      // Inject the number
+      markerEl.innerText = index + 1;
+
       if (index === activeIndex) {
         markerEl.classList.add("is-active");
+      } else {
+        markerEl.classList.add("is-dim");
       }
 
       const marker = new maplibregl.Marker({ element: markerEl, anchor: "center" })
@@ -65,17 +76,11 @@ window.RouteCraft = window.RouteCraft || {};
     return markers;
   };
 
-  /**
-   * Refreshes the route layer using a performant "one-feature-per-leg" approach.
-   * This replaces the heavy thousands-of-segments approach.
-   */
   window.RouteCraft.refreshRouteLayer = function refreshRouteLayer(map, stops, routeColors, routeGeometries = []) {
     const features = [];
 
     for (let i = 0; i < stops.length - 1; i += 1) {
       const color = routeColors[i % routeColors.length];
-      
-      // Use provided high-fidelity geometry or fallback to a straight line
       const coords = routeGeometries[i] || [
         [stops[i].longitude, stops[i].latitude],
         [stops[i + 1].longitude, stops[i + 1].latitude]
@@ -84,10 +89,7 @@ window.RouteCraft = window.RouteCraft || {};
       features.push({
         type: "Feature",
         properties: { color: color },
-        geometry: {
-          type: "LineString",
-          coordinates: coords
-        }
+        geometry: { type: "LineString", coordinates: coords }
       });
     }
 
@@ -99,7 +101,6 @@ window.RouteCraft = window.RouteCraft || {};
       map.getSource("trip-route").setData(data);
     }
 
-    // Glow Layer (Background shadow for the line)
     if (!map.getLayer("trip-route-glow")) {
       map.addLayer({
         id: "trip-route-glow",
@@ -113,16 +114,12 @@ window.RouteCraft = window.RouteCraft || {};
       });
     }
 
-    // Main Route Line Layer
     if (!map.getLayer("trip-route-line")) {
       map.addLayer({
         id: "trip-route-line",
         type: "line",
         source: "trip-route",
-        layout: { 
-          "line-cap": "round", 
-          "line-join": "round" 
-        },
+        layout: { "line-cap": "round", "line-join": "round" },
         paint: {
           "line-color": ["get", "color"],
           "line-width": 3.5

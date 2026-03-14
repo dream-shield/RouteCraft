@@ -1,19 +1,28 @@
 .custom-marker {
-  width: 14px;
-  height: 14px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 999px;
-  border: 2px solid #ffffff;
-  background: #2563eb;
-  box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.22);
+  font-family: 'Manrope', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease, opacity 0.2s ease;
+  user-select: none;
+  background: white;
+  border: 1px solid #cbd5e1;
+  color: #1e293b;
 }
 
 .custom-marker.is-dim {
-  opacity: 0.45;
+  opacity: 0.7;
 }
 
 .custom-marker.is-active {
   opacity: 1;
   transform: scale(1.2);
-  box-shadow: 0 0 0 10px rgba(15, 23, 42, 0.22);
-  filter: saturate(1.35);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10;
 }
