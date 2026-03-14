@@ -172,17 +172,30 @@
       /** Fetches updated route geometries for all segments in the itinerary. */
       async updateRouteGeometries() {
         const geometries = [];
+        let hasRoutingError = false;
+
         for (let i = 0; i < this.stops.length - 1; i++) {
           const origin = this.stops[i];
           const destination = this.stops[i + 1];
 
           if (origin.dayId === destination.dayId) {
             const mode = destination.transportMode || "auto";
-            geometries.push(await RC.fetchRouteSegment(origin, destination, mode, this.stadiaApiKey));
+            const segment = await RC.fetchRouteSegment(origin, destination, mode, this.stadiaApiKey);
+            geometries.push(segment);
+
+            // If fetchRouteSegment returns only 2 points, it's likely a fallback due to error
+            if (segment.length === 2) {
+              hasRoutingError = true;
+            }
           } else {
             geometries.push(null);
           }
         }
+
+        if (hasRoutingError && this.stops.length > 1) {
+          this.showToast("Some routes could not be calculated. Using straight lines.", "info");
+        }
+
         this.routeGeometries = geometries;
       },
 
@@ -207,9 +220,18 @@
         const index = this.stops.findIndex(s => s.id === stopId);
         if (index === -1) return;
 
+        const stop = this.stops[index];
         this.store.activeIndex = index;
+        
+        // Ensure the active day is updated to the selected stop's day
+        if (stop.dayId) {
+          this.store.activeDayId = stop.dayId;
+          // Also ensure the day is expanded
+          this.store.updateDay(stop.dayId, { isCollapsed: false });
+        }
+
         if (this.mapLoaded) {
-          RC.flyToStop(this.map, this.stops[index]);
+          RC.flyToStop(this.map, stop);
         }
         if (shouldScroll) {
           nextTick(() => {
