@@ -139,7 +139,7 @@
       /** Synchronizes the current stop data with the map's markers and route lines. */
       syncMapData() {
         if (!this.mapLoaded) return;
-        
+
         const activeStopId = this.stops[this.activeIndex]?.id;
         this.markers = RC.renderMarkers(window.maplibregl, this.map, this.stopsForActiveDay, this.markers, activeStopId, this.routeColors);
         RC.refreshRouteLayer(this.map, this.stopsForActiveDay, this.routeColors, this.routeGeometries, this.stops);
@@ -151,7 +151,7 @@
         for (let i = 0; i < this.stops.length - 1; i++) {
           const origin = this.stops[i];
           const destination = this.stops[i + 1];
-          
+
           if (origin.dayId === destination.dayId) {
             const mode = destination.transportMode || "auto";
             geometries.push(await RC.fetchRouteSegment(origin, destination, mode, this.stadiaApiKey));
@@ -182,7 +182,7 @@
       flyToStop(stopId, shouldScroll = true) {
         const index = this.stops.findIndex(s => s.id === stopId);
         if (index === -1) return;
-        
+
         this.store.activeIndex = index;
         if (this.mapLoaded) {
           RC.flyToStop(this.map, this.stops[index]);
@@ -195,13 +195,13 @@
       },
 
       /** Navigates to the previous stop in the itinerary. */
-      goPrev() { 
+      goPrev() {
         if (this.activeIndex > 0) {
           this.flyToStop(this.stops[this.activeIndex - 1].id);
         }
       },
       /** Navigates to the next stop in the itinerary. */
-      goNext() { 
+      goNext() {
         if (this.activeIndex < this.stops.length - 1) {
           this.flyToStop(this.stops[this.activeIndex + 1].id);
         }
@@ -210,14 +210,14 @@
       /** Toggles the visibility of the Add Place menu for a specific day. */
       toggleAddMenuForDay(dayId) {
         const isCurrentlyOpenForThisDay = this.addMenuOpen && this.activeAddDayId === dayId;
-        
+
         if (isCurrentlyOpenForThisDay) {
           this.closeAddMenu();
         } else {
           // Ensure the day is expanded and active
           this.store.updateDay(dayId, { isCollapsed: false });
           this.store.activeDayId = dayId;
-          
+
           this.activeAddDayId = dayId;
           this.addMenuOpen = true;
         }
@@ -300,8 +300,8 @@
         return this.stops.filter(s => s.dayId === dayId);
       },
 
-      /** 
-       * Returns the relative index of a stop within its day IF it is 
+      /**
+       * Returns the relative index of a stop within its day IF it is
        * currently active globally. Otherwise returns -1.
        */
       activeStopIndexInDay(stopId, dayId) {
@@ -321,24 +321,26 @@
           containers.forEach(container => {
             // Avoid re-initializing
             if (container.sortable) container.sortable.destroy();
-            
+
             container.sortable = window.Sortable.create(container, {
               group: "stops",
               animation: 170,
+              delay: 100,
+              delayOnTouchOnly: false,
               filter: "button, input, textarea, .rc-exclude-drag",
               preventOnFilter: false,
               onEnd: (e) => {
                 const stopId = e.item.id.replace("card-", "");
                 const targetDayId = e.to.dataset.dayId;
                 const newIdxInDay = e.newIndex;
-                
+
                 // Find where the stop should be in the global flat list
                 const globalIdx = this.stops.findIndex(s => s.id == stopId);
                 if (globalIdx === -1) return;
 
                 // 1. Find the target day's stops
                 const targetDayStops = this.getStopsForDay(targetDayId);
-                
+
                 // 2. Find the global index where it should be inserted
                 let targetGlobalIdx;
                 if (targetDayStops.length === 0 || (targetDayStops.length === 1 && targetDayStops[0].id === stopId)) {
@@ -347,15 +349,15 @@
                   // A simpler way is to just filter, move, and update.
                   targetGlobalIdx = this.stops.length; // Placeholder
                 }
-                
+
                 // Because we use a flat list, moving across groups is tricky for Sortable.
                 // We'll perform a "Move to Day at Position" operation.
                 const movedStop = this.stops[globalIdx];
                 const otherStops = this.stops.filter(s => s.id !== stopId);
-                
+
                 // Find all stops for target day (excluding the moved one)
                 const dayStops = otherStops.filter(s => s.dayId === targetDayId);
-                
+
                 let insertAt;
                 if (newIdxInDay >= dayStops.length) {
                   // Add to the end of the day's stops
@@ -371,9 +373,9 @@
                 movedStop.dayId = targetDayId;
                 otherStops.splice(insertAt, 0, movedStop);
                 this.store.stops = otherStops;
-                
+
                 this.flyToStop(stopId);
-                
+
                 // Re-init to ensure DOM and data are in sync
                 this.initSortable();
               }
@@ -384,12 +386,12 @@
     },
 
     watch: {
-      stops: { 
-        async handler() { 
-          await this.updateRouteGeometries(); 
+      stops: {
+        async handler() {
+          await this.updateRouteGeometries();
           this.syncMapData();
-        }, 
-        deep: true 
+        },
+        deep: true
       },
       "store.days": { handler() { this.initSortable(); }, deep: true },
       activeIndex() { this.syncMapData(); },
