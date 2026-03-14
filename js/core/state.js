@@ -1,5 +1,37 @@
+/**
+ * @fileoverview Core state and initial data for RouteCraft.
+ * Defines the shared data structures used across the application.
+ */
+
 window.RouteCraft = window.RouteCraft || {};
 
+/**
+ * @typedef {('auto'|'bicycle'|'pedestrian')} TransportMode
+ * The mode of transport for a route segment.
+ */
+
+/**
+ * @typedef {Object} Stop
+ * @property {number} id - Unique identifier for the stop.
+ * @property {string} title - Display title of the stop.
+ * @property {string} description - Brief description of the stop.
+ * @property {number} longitude - WGS84 longitude.
+ * @property {number} latitude - WGS84 latitude.
+ * @property {number} zoomLevel - Preferred map zoom level for this stop.
+ * @property {string} searchQuery - The original search string used to find this place.
+ * @property {TransportMode|null} transportMode - Mode used to reach this stop from the previous one.
+ */
+
+/**
+ * @typedef {Object} ItineraryPayload
+ * @property {Stop[]} stops - Array of stops in the itinerary.
+ * @property {number} activeIndex - The index of the currently focused stop.
+ */
+
+/**
+ * Initial set of stops displayed when the app loads without saved data.
+ * @type {Stop[]}
+ */
 window.RouteCraft.initialStops = [
   {
     id: 1,
@@ -53,6 +85,10 @@ window.RouteCraft.initialStops = [
   }
 ];
 
+/**
+ * Creates a fresh, empty form object for stop creation and editing.
+ * @returns {Object} A new form state object.
+ */
 window.RouteCraft.createEmptyForm = function createEmptyForm() {
   return {
     query: "",
