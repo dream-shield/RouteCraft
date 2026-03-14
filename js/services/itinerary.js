@@ -17,6 +17,8 @@ window.RouteCraft = window.RouteCraft || {};
     if (!Array.isArray(rawStops)) return [];
     
     const seenDayIds = new Set();
+    const seenStopIds = new Set();
+
     return rawStops
       .map((stop) => {
         const isFirstInDay = !stop.dayId || !seenDayIds.has(stop.dayId);
@@ -34,7 +36,14 @@ window.RouteCraft = window.RouteCraft || {};
           transportMode: isFirstInDay ? null : (stop.transportMode || "auto")
         };
       })
-      .filter((stop) => stop.title && Number.isFinite(stop.longitude) && Number.isFinite(stop.latitude));
+      .filter((stop) => {
+        const isValid = stop.title && Number.isFinite(stop.longitude) && Number.isFinite(stop.latitude);
+        if (!isValid) return false;
+        
+        if (seenStopIds.has(stop.id)) return false;
+        seenStopIds.add(stop.id);
+        return true;
+      });
   }
 
   /**

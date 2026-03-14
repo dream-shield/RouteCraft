@@ -36,8 +36,11 @@
 
         /** @type {boolean} State of the Add Place menu */
         addMenuOpen: false,
+        /** @type {boolean} State of the Share dropdown menu */
+        shareMenuOpen: false,
+        /** @type {boolean} State of the Import dropdown menu */
+        importMenuOpen: false,
         /** @type {string|null} ID of the day currently being added to */
-        activeAddDayId: null,
 
         /** @type {boolean} Visibility of the local data toast */
         showLocalDataToast: false,
@@ -436,6 +439,8 @@
       // Global click listener to close menus when clicking outside
       document.addEventListener("pointerdown", (e) => {
         if (!e.target.closest(".add-stop-menu")) this.addMenuOpen = false;
+        if (!e.target.closest(".share-menu-container")) this.shareMenuOpen = false;
+        if (!e.target.closest(".import-menu-container")) this.importMenuOpen = false;
       }, true);
     }
   }).mount("#app");

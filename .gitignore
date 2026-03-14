@@ -3,6 +3,7 @@
 # Project specific
 conductor/
 GEMINI.md
+tools/
 
 # OS specific
 .DS_Store
