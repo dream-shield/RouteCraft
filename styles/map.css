@@ -9,11 +9,13 @@
   font-weight: 700;
   font-size: 13px;
   cursor: pointer;
-  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease, opacity 0.2s ease;
+  transition: box-shadow 0.2s ease, opacity 0.2s ease;
   user-select: none;
   background: white;
   border: 1px solid #cbd5e1;
   color: #1e293b;
+  /* Ensure the marker container doesn't intercept pointer events incorrectly */
+    pointer-events: auto;
 }
 
 .custom-marker.is-dim {
