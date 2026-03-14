@@ -1,6 +1,17 @@
+/**
+ * @fileoverview Service for location search and geocoding using Photon (OSM-based).
+ * Includes custom scoring logic to improve result relevance.
+ */
+
 window.RouteCraft = window.RouteCraft || {};
 
 (function searchModule() {
+  /**
+   * Normalizes text by lowercasing, stripping special characters,
+   * and collapsing multiple spaces.
+   * @param {string} value - The raw text to normalize.
+   * @returns {string} The normalized text.
+   */
   function normalizeText(value) {
     return value
       .toLowerCase()
@@ -10,6 +21,12 @@ window.RouteCraft = window.RouteCraft || {};
       .trim();
   }
 
+  /**
+   * Calculates a relevance score for a search result based on the user's query.
+   * @param {Object} result - The search result from the API.
+   * @param {string} rawQuery - The user's search query.
+   * @returns {number} The calculated score (higher is better).
+   */
   function scoreResult(result, rawQuery) {
     const queryNorm = normalizeText(rawQuery);
     const compactQuery = queryNorm.replace(/\s+/g, "");
@@ -26,6 +43,11 @@ window.RouteCraft = window.RouteCraft || {};
     return score;
   }
 
+  /**
+   * Internal helper to perform a specific search variant against the Photon API.
+   * @param {string} queryVariant - The search query to perform.
+   * @returns {Promise<Object[]>} A promise resolving to the list of geocoding results.
+   */
   async function searchVariant(queryVariant) {
     const response = await fetch(
       `https://photon.komoot.io/api/?q=${encodeURIComponent(queryVariant)}&limit=12&lang=en`,
@@ -69,6 +91,11 @@ window.RouteCraft = window.RouteCraft || {};
       .filter(Boolean);
   }
 
+  /**
+   * Fetches location suggestions for a query string, including result deduplication and sorting.
+   * @param {string} query - The search query to find suggestions for.
+   * @returns {Promise<Object[]>} A promise resolving to the top 10 relevant suggestions.
+   */
   window.RouteCraft.fetchSuggestions = async function fetchSuggestions(query) {
     const normalized = query.trim();
     if (!normalized) return [];

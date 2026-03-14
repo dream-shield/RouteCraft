@@ -1,8 +1,15 @@
+/**
+ * @fileoverview Service for generating and parsing KML (Keyhole Markup Language)
+ * files to support itinerary export and import.
+ */
+
 window.RouteCraft = window.RouteCraft || {};
 
 (function kmlModule() {
   /**
-   * Escapes special characters for XML.
+   * Escapes special characters for XML to prevent parsing errors.
+   * @param {string} text - The text to escape.
+   * @returns {string} The XML-safe string.
    */
   function escapeXml(text) {
     return String(text || "")
@@ -15,6 +22,8 @@ window.RouteCraft = window.RouteCraft || {};
 
   /**
    * Generates a KML string from an array of stops.
+   * @param {Stop[]} stops - The itinerary stops to export.
+   * @returns {string} A complete, valid KML document string.
    */
   window.RouteCraft.generateKml = function generateKml(stops) {
     const placemarks = stops.map(stop => `    <Placemark>
@@ -36,7 +45,8 @@ ${placemarks}
 
   /**
    * Parses a KML string into an array of stop objects.
-   * Returns null if parsing fails or no valid stops are found.
+   * @param {string} text - The raw KML content to parse.
+   * @returns {Stop[]|null} An array of parsed stops or null if parsing fails.
    */
   window.RouteCraft.parseKml = function parseKml(text) {
     const doc = new DOMParser().parseFromString(text, "application/xml");

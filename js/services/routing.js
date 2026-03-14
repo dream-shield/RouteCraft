@@ -1,6 +1,17 @@
+/**
+ * @fileoverview Service for fetching route geometries between stops using
+ * the Stadia Maps Routing API.
+ */
+
 window.RouteCraft = window.RouteCraft || {};
 
 (function routingModule() {
+  /**
+   * Decodes a polyline6 string into an array of [lng, lat] coordinate pairs.
+   * polyline6 is a space-efficient format used by many routing engines.
+   * @param {string} str - The encoded polyline string.
+   * @returns {number[][]} Array of coordinate pairs.
+   */
   function decodePolyline6(str) {
     let index = 0;
     let lat = 0;
@@ -35,6 +46,15 @@ window.RouteCraft = window.RouteCraft || {};
     return coordinates;
   }
 
+  /**
+   * Fetches the route geometry for a single segment between two stops.
+   * Falls back to a straight line if the API call fails or no key is provided.
+   * @param {Stop} start - The starting stop of the segment.
+   * @param {Stop} end - The ending stop of the segment.
+   * @param {TransportMode} mode - The mode of transport (auto, bicycle, pedestrian).
+   * @param {string} apiKey - The Stadia Maps API key.
+   * @returns {Promise<number[][]>} A promise resolving to the coordinate array for the segment.
+   */
   window.RouteCraft.fetchRouteSegment = async function fetchRouteSegment(start, end, mode, apiKey) {
     if (!apiKey || apiKey === "YOUR_STADIA_API_KEY") {
       return [
