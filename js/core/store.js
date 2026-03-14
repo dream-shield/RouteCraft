@@ -78,6 +78,7 @@
      * @returns {boolean} True if data was successfully applied.
      */
     loadPayload(payload) {
+      const ItineraryService = window.RouteCraft.ItineraryService;
       const sanitized = ItineraryService.sanitizeStops(payload?.stops);
       if (!sanitized.length) return false;
 

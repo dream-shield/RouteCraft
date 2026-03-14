@@ -145,6 +145,7 @@
               :active-index="activeIndex"
               :editing-stop-id="editingStopId"
               :edit-form="editForm"
+              :route-colors="routeColors"
               @fly-to-stop="flyToStop"
               @set-segment-mode="setSegmentMode"
               @start-edit="startEdit"
@@ -354,18 +355,20 @@
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
 
-  <!-- RouteCraft Core & Utils -->
+  <!-- RouteCraft Core & Utils (Fundamental) -->
   <script src="js/core/utils.js"></script>
   <script src="js/core/state.js"></script>
-  <script src="js/core/store.js"></script>
   
-  <!-- RouteCraft Services -->
+  <!-- RouteCraft Services (Logic) -->
   <script src="js/services/storage.js"></script>
   <script src="js/services/kml.js"></script>
   <script src="js/services/itinerary.js"></script>
   <script src="js/services/search.js"></script>
   <script src="js/services/routing.js"></script>
   <script src="js/services/map.js"></script>
+
+  <!-- RouteCraft Core (Dependent on Services) -->
+  <script src="js/core/store.js"></script>
   
   <!-- RouteCraft Components -->
   <script src="js/components/PlaceSearch.js"></script>
