@@ -43,12 +43,6 @@
         editingStopId: null,
         /** @type {Object} State of the edit form */
         editForm: RC.createEmptyForm(),
-        /** @type {Object[]} Search suggestions for the edit form */
-        editSuggestions: [],
-        /** @type {number} Index of highlighted edit suggestion */
-        editHighlighted: -1,
-        /** @type {boolean} Visibility of edit suggestions list */
-        showEditSuggestions: false,
 
         /** @type {boolean} Visibility of the data source prompt modal */
         sourcePromptOpen: false,
@@ -279,33 +273,6 @@
       startEdit(stop) {
         this.editingStopId = stop.id;
         this.editForm = { ...stop, query: stop.searchQuery || stop.title };
-        this.showEditSuggestions = false;
-      },
-
-      /** Performs a geocoding search for the current edit form query. */
-      async runEditSearch() {
-        this.editSuggestions = await RC.fetchSuggestions(this.editForm.query);
-        this.editHighlighted = this.editSuggestions.length ? 0 : -1;
-        this.showEditSuggestions = true;
-      },
-
-      /** Debounced input handler for the edit form's search field. */
-      onEditQueryInput: RC.debounce(function() { this.runEditSearch(); }, 280),
-
-      /**
-       * Navigates edit suggestions using arrow keys.
-       * @param {number} step - Direction of movement (1 or -1).
-       */
-      moveEditSelection(step) {
-        if (!this.editSuggestions.length) return;
-        const count = this.editSuggestions.length;
-        this.editHighlighted = (this.editHighlighted + step + count) % count;
-      },
-
-      /** Selects the currently highlighted suggestion in the edit form. */
-      selectHighlightedEdit() {
-        if (this.editHighlighted < 0 || this.editHighlighted >= this.editSuggestions.length) return;
-        this.selectEditSuggestion(this.editSuggestions[this.editHighlighted]);
       },
 
       /**
@@ -317,7 +284,6 @@
         this.editForm.searchQuery = item.display_name;
         this.editForm.latitude = Number.parseFloat(item.lat);
         this.editForm.longitude = Number.parseFloat(item.lon);
-        this.showEditSuggestions = false;
       },
 
       /** Saves the current edit form data back to the itinerary. */
@@ -338,7 +304,6 @@
       /** Cancels edit mode without saving changes. */
       cancelEdit() {
         this.editingStopId = null;
-        this.showEditSuggestions = false;
       },
 
       /**
@@ -406,7 +371,8 @@
       // Global click listener to close menus when clicking outside
       document.addEventListener("pointerdown", (e) => {
         if (!e.target.closest(".add-stop-menu")) this.addMenuOpen = false;
-        if (!e.target.closest(".autocomplete-edit")) this.showEditSuggestions = false;
+        // Search suggestions handle their own closing via 'esc' or click-away inside PlaceSearch if needed,
+        // but here we just ensure the global menus behave.
       }, true);
     }
   }).mount("#app");

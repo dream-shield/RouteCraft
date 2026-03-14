@@ -19,14 +19,11 @@
       editingStopId: [Number, String],
       /** @type {Object} */
       editForm: Object,
-      /** @type {Object[]} */
-      editSuggestions: Array,
-      /** @type {number} */
-      editHighlighted: Number,
-      /** @type {boolean} */
-      showEditSuggestions: Boolean,
       /** @type {string[]} */
       routeColors: Array
+    },
+    components: {
+      'place-search': window.PlaceSearch
     },
     emits: [
       'fly-to-stop',
@@ -35,9 +32,6 @@
       'delete-stop',
       'save-edit',
       'cancel-edit',
-      'edit-query-input',
-      'move-edit-selection',
-      'select-highlighted-edit',
       'select-edit-suggestion'
     ],
     methods: {

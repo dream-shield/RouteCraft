@@ -1,6 +1,6 @@
 /**
  * @fileoverview Vue component for the "Add Destination" dropdown menu.
- * Handles location search suggestions and new stop creation.
+ * Uses the PlaceSearch component to handle location searching.
  */
 
 (function addStopMenuComponent() {
@@ -12,17 +12,14 @@
       /** @type {boolean} */
       open: Boolean
     },
+    components: {
+      'place-search': window.PlaceSearch
+    },
     emits: ['add-stop', 'close'],
     data() {
       return {
         /** @type {Object} New stop form data */
-        addForm: RC.createEmptyForm(),
-        /** @type {Object[]} Array of geocoding suggestions */
-        addSuggestions: [],
-        /** @type {number} Index of the highlighted suggestion */
-        addHighlighted: -1,
-        /** @type {boolean} Controls visibility of the suggestions list */
-        showAddSuggestions: false
+        addForm: RC.createEmptyForm()
       };
     },
     computed: {
@@ -41,36 +38,6 @@
     },
     methods: {
       /**
-       * Performs a search against the geocoding service using the current query.
-       */
-      async runAddSearch() {
-        this.addSuggestions = await RC.fetchSuggestions(this.addForm.query);
-        this.addHighlighted = this.addSuggestions.length ? 0 : -1;
-        this.showAddSuggestions = true;
-      },
-      /**
-       * Debounced input handler for the search field.
-       */
-      onAddQueryInput: RC.debounce(function() {
-        this.runAddSearch();
-      }, 280),
-      /**
-       * Navigates the search suggestions using arrow keys.
-       * @param {number} step - The number of positions to move (e.g., 1 or -1).
-       */
-      moveAddSelection(step) {
-        if (!this.addSuggestions.length) return;
-        const count = this.addSuggestions.length;
-        this.addHighlighted = (this.addHighlighted + step + count) % count;
-      },
-      /**
-       * Selects the currently highlighted search suggestion.
-       */
-      selectHighlightedAdd() {
-        if (this.addHighlighted < 0 || this.addHighlighted >= this.addSuggestions.length) return;
-        this.selectAddSuggestion(this.addSuggestions[this.addHighlighted]);
-      },
-      /**
        * Populates the form with data from a selected geocoding result.
        * @param {Object} item - The selected suggestion item.
        */
@@ -82,7 +49,6 @@
         if (!this.addForm.title.trim()) {
           this.addForm.title = item.display_name.split(",")[0].trim();
         }
-        this.showAddSuggestions = false;
       },
       /**
        * Finalizes and emits the "add-stop" event with the current form data.
@@ -91,16 +57,6 @@
         if (!this.canAddStop) return;
         this.$emit('add-stop', { ...this.addForm });
         this.addForm = RC.createEmptyForm();
-        this.addSuggestions = [];
-        this.addHighlighted = -1;
-        this.showAddSuggestions = false;
-      }
-    },
-    watch: {
-      open(newVal) {
-        if (!newVal) {
-          this.showAddSuggestions = false;
-        }
       }
     }
   };
