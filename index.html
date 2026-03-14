@@ -23,31 +23,11 @@
       <section class="relative z-20 order-2 md:order-1 h-full overflow-y-auto border-r border-slate-200 bg-slate-50 md:bg-gradient-to-b md:from-slate-50 md:to-slate-100 p-4 pt-4 pb-32 overscroll-contain">
         <div class="mx-auto max-w-2xl">
           <div class="rounded-2xl border border-slate-200 bg-white/90 p-3 shadow-sm md:border-0 md:bg-transparent md:p-0 md:shadow-none">
-          <div
-            v-if="sourcePromptOpen"
-            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
-          >
-            <div class="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
-              <h2 class="mb-2 text-lg font-semibold">Load itinerary</h2>
-              <p class="text-sm text-slate-600">We found data in the URL and local storage. Which one should we use?</p>
-              <div class="mt-4 flex gap-2">
-                <button
-                  type="button"
-                  class="flex-1 rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-                  @click="chooseUrlData"
-                >
-                  Use URL
-                </button>
-                <button
-                  type="button"
-                  class="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold hover:bg-slate-50"
-                  @click="chooseLocalData"
-                >
-                  Use local
-                </button>
-              </div>
-            </div>
-          </div>
+          <source-prompt
+            :show="sourcePromptOpen"
+            @choose-url="chooseUrlData"
+            @choose-local="chooseLocalData"
+          ></source-prompt>
 
           <header class="mb-4">
             <div class="flex items-center gap-3">
@@ -124,165 +104,225 @@
               @change="importKmlFile"
             />
 
-          <div v-if="addMenuOpen" class="space-y-2">
-              <div class="relative autocomplete-add">
-                <input
-                  v-model.trim="addForm.query"
-                  @input="onAddQueryInput"
-                  @focus="showAddSuggestions = true"
-                  @keydown.down.prevent="moveAddSelection(1)"
-                  @keydown.up.prevent="moveAddSelection(-1)"
-                  @keydown.enter.prevent="selectHighlightedAdd"
-                  @keydown.esc="showAddSuggestions = false"
-                  placeholder="Search place or address"
-                  class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-blue-500 focus:ring-2"
-                />
-
-                <div
-                  v-if="showAddSuggestions && addSuggestions.length"
-                  class="absolute z-40 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg"
-                >
-                  <button
-                    v-for="(item, idx) in addSuggestions"
-                    :key="item.place_id"
-                    type="button"
-                    class="block w-full px-3 py-2 text-left text-sm hover:bg-slate-100"
-                    :class="idx === addHighlighted ? 'bg-slate-100' : ''"
-                    @mousedown.prevent="selectAddSuggestion(item)"
-                  >
-                    {{ item.display_name }}
-                  </button>
-                </div>
-              </div>
-
-              <input v-model.trim="addForm.title" placeholder="Title" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-blue-500 focus:ring-2" />
-              <textarea v-model.trim="addForm.description" rows="2" placeholder="Description (optional)" class="w-full resize-y rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-blue-500 focus:ring-2"></textarea>
-
-              <div class="flex items-center gap-2">
-                <input v-model.number="addForm.zoomLevel" type="number" min="2" max="18" step="0.1" class="w-28 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-blue-500 focus:ring-2" />
-                <button
-                  type="button"
-                  class="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-                  :disabled="!canAddStop"
-                  @click="addStop"
-                >
-                  Add Stop
-                </button>
-              </div>
-            </div>
+            <add-stop-menu
+              :open="addMenuOpen"
+              @add-stop="onComponentAddStop"
+              @close="addMenuOpen = false"
+            ></add-stop-menu>
           </div>
 
           <div ref="cardsList" class="space-y-3">
-            <article
+            <stop-card
               v-for="(stop, index) in stops"
               :key="stop.id"
-              :id="`card-${stop.id}`"
-              class="relative rounded-2xl border bg-white p-4 shadow transition"
-              :class="index === activeIndex ? 'border-blue-300 shadow-blue-100' : 'border-slate-200'"
-              @click="flyToStop(index)"
-            >
-              <!-- Transit Mode Selector (floating above the card) -->
-              <div v-if="index > 0" class="absolute -top-5 left-0 right-0 z-10 flex justify-center">
-                <div class="flex gap-1 rounded-full border border-slate-200 bg-white p-1 shadow-sm backdrop-blur" @click.stop>
-                  <button
-                    v-for="mode in ['auto', 'bicycle', 'pedestrian']"
-                    :key="mode"
-                    type="button"
-                    class="flex h-7 w-7 items-center justify-center rounded-full transition-colors hover:bg-slate-100"
-                    :class="stop.transportMode === mode ? 'bg-blue-100 text-blue-600' : 'text-slate-400'"
-                    @click.stop="setSegmentMode(index, mode)"
-                    :title="mode.charAt(0).toUpperCase() + mode.slice(1)"
-                  >
-                    <span class="material-symbols-outlined text-base">
-                      {{ mode === 'auto' ? 'directions_car' : (mode === 'bicycle' ? 'directions_bike' : 'directions_walk') }}
-                    </span>
-                  </button>
-                </div>
-              </div>
-              <div class="mb-2 flex items-center justify-between">
-                <div
-                  class="inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold"
-                  :style="getBadgeStyle(index)"
-                >
-                  {{ index + 1 }}
-                </div>
-                <button
-                  type="button"
-                  class="drag-handle inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-500 hover:bg-slate-50"
-                  aria-label="Drag to reorder"
-                  title="Drag to reorder"
-                  @click.stop
-                >
-                  <svg viewBox="0 0 24 24" class="h-4 w-4" fill="currentColor" aria-hidden="true">
-                    <circle cx="9" cy="6" r="1.4"></circle>
-                    <circle cx="15" cy="6" r="1.4"></circle>
-                    <circle cx="9" cy="12" r="1.4"></circle>
-                    <circle cx="15" cy="12" r="1.4"></circle>
-                    <circle cx="9" cy="18" r="1.4"></circle>
-                    <circle cx="15" cy="18" r="1.4"></circle>
-                  </svg>
-                </button>
-              </div>
-
-              <template v-if="editingStopId !== stop.id">
-                <h2 class="mb-1 text-lg font-semibold">{{ stop.title }}</h2>
-                <p class="text-sm text-slate-600">{{ stop.description }}</p>
-                <div class="mt-3 flex gap-2">
-                  <button type="button" class="rounded-md border border-slate-300 px-2.5 py-1.5 text-xs font-semibold hover:bg-slate-50" @click.stop="startEdit(stop)">Edit</button>
-                  <button type="button" class="rounded-md border border-rose-300 px-2.5 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50" @click.stop="deleteStop(index)">Delete</button>
-                </div>
-              </template>
-
-              <template v-else>
-                <div class="space-y-2" @click.stop>
-                  <div class="relative autocomplete-edit">
-                    <input
-                      v-model.trim="editForm.query"
-                      @input="onEditQueryInput"
-                      @focus="showEditSuggestions = true"
-                      @keydown.down.prevent="moveEditSelection(1)"
-                      @keydown.up.prevent="moveEditSelection(-1)"
-                      @keydown.enter.prevent="selectHighlightedEdit"
-                      @keydown.esc="showEditSuggestions = false"
-                      placeholder="Search new place/address"
-                      class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-blue-500 focus:ring-2"
-                    />
-
-                    <div
-                      v-if="showEditSuggestions && editSuggestions.length"
-                      class="absolute z-40 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg"
-                    >
-                      <button
-                        v-for="(item, idx) in editSuggestions"
-                        :key="item.place_id"
-                        type="button"
-                        class="block w-full px-3 py-2 text-left text-sm hover:bg-slate-100"
-                        :class="idx === editHighlighted ? 'bg-slate-100' : ''"
-                        @mousedown.prevent="selectEditSuggestion(item)"
-                      >
-                        {{ item.display_name }}
-                      </button>
-                    </div>
-                  </div>
-
-                  <input v-model.trim="editForm.title" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-blue-500 focus:ring-2" />
-                  <textarea v-model.trim="editForm.description" rows="2" class="w-full resize-y rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-blue-500 focus:ring-2"></textarea>
-                  <input v-model.number="editForm.zoomLevel" type="number" min="2" max="18" step="0.1" class="w-28 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-blue-500 focus:ring-2" />
-
-                  <div class="flex gap-2">
-                    <button type="button" class="rounded-md bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-blue-700" @click="saveEdit">Save</button>
-                    <button type="button" class="rounded-md border border-slate-300 px-2.5 py-1.5 text-xs font-semibold hover:bg-slate-50" @click="cancelEdit">Cancel</button>
-                  </div>
-                </div>
-                </template>
-                </article>
-                </div>
+              :stop="stop"
+              :index="index"
+              :active-index="activeIndex"
+              :editing-stop-id="editingStopId"
+              :edit-form="editForm"
+              :edit-suggestions="editSuggestions"
+              :edit-highlighted="editHighlighted"
+              :show-edit-suggestions="showEditSuggestions"
+              :route-colors="routeColors"
+              @fly-to-stop="flyToStop"
+              @set-segment-mode="setSegmentMode"
+              @start-edit="startEdit"
+              @delete-stop="deleteStop"
+              @save-edit="saveEdit"
+              @cancel-edit="cancelEdit"
+              @edit-query-input="onEditQueryInput"
+              @move-edit-selection="moveEditSelection"
+              @select-highlighted-edit="selectHighlightedEdit"
+              @select-edit-suggestion="selectEditSuggestion"
+            ></stop-card>
+          </div>
 
         </div>
       </section>
 
     </div>
   </div>
+
+  <script type="text/x-template" id="source-prompt-template">
+    <div
+      v-if="show"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+    >
+      <div class="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
+        <h2 class="mb-2 text-lg font-semibold">Load itinerary</h2>
+        <p class="text-sm text-slate-600">We found data in the URL and local storage. Which one should we use?</p>
+        <div class="mt-4 flex gap-2">
+          <button
+            type="button"
+            class="flex-1 rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+            @click="$emit('choose-url')"
+          >
+            Use URL
+          </button>
+          <button
+            type="button"
+            class="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold hover:bg-slate-50"
+            @click="$emit('choose-local')"
+          >
+            Use local
+          </button>
+        </div>
+      </div>
+    </div>
+  </script>
+
+  <script type="text/x-template" id="add-stop-menu-template">
+    <div v-if="open" class="space-y-2">
+      <div class="relative autocomplete-add">
+        <input
+          v-model.trim="addForm.query"
+          @input="onAddQueryInput"
+          @focus="showAddSuggestions = true"
+          @keydown.down.prevent="moveAddSelection(1)"
+          @keydown.up.prevent="moveAddSelection(-1)"
+          @keydown.enter.prevent="selectHighlightedAdd"
+          @keydown.esc="$emit('close')"
+          placeholder="Search place or address"
+          class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-blue-500 focus:ring-2"
+        />
+
+        <div
+          v-if="showAddSuggestions && addSuggestions.length"
+          class="absolute z-40 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg"
+        >
+          <button
+            v-for="(item, idx) in addSuggestions"
+            :key="item.place_id"
+            type="button"
+            class="block w-full px-3 py-2 text-left text-sm hover:bg-slate-100"
+            :class="idx === addHighlighted ? 'bg-slate-100' : ''"
+            @mousedown.prevent="selectAddSuggestion(item)"
+          >
+            {{ item.display_name }}
+          </button>
+        </div>
+      </div>
+
+      <input v-model.trim="addForm.title" placeholder="Title" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-blue-500 focus:ring-2" />
+      <textarea v-model.trim="addForm.description" rows="2" placeholder="Description (optional)" class="w-full resize-y rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-blue-500 focus:ring-2"></textarea>
+
+      <div class="flex items-center gap-2">
+        <input v-model.number="addForm.zoomLevel" type="number" min="2" max="18" step="0.1" class="w-28 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-blue-500 focus:ring-2" />
+        <button
+          type="button"
+          class="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+          :disabled="!canAddStop"
+          @click="addStop"
+        >
+          Add Stop
+        </button>
+      </div>
+    </div>
+  </script>
+
+  <script type="text/x-template" id="stop-card-template">
+    <article
+      :id="'card-' + stop.id"
+      class="relative rounded-2xl border bg-white p-4 shadow transition"
+      :class="index === activeIndex ? 'border-blue-300 shadow-blue-100' : 'border-slate-200'"
+      @click="$emit('fly-to-stop', index)"
+    >
+      <!-- Transit Mode Selector (floating above the card) -->
+      <div v-if="index > 0" class="absolute -top-5 left-0 right-0 z-10 flex justify-center">
+        <div class="flex gap-1 rounded-full border border-slate-200 bg-white p-1 shadow-sm backdrop-blur" @click.stop>
+          <button
+            v-for="mode in ['auto', 'bicycle', 'pedestrian']"
+            :key="mode"
+            type="button"
+            class="flex h-7 w-7 items-center justify-center rounded-full transition-colors hover:bg-slate-100"
+            :class="stop.transportMode === mode ? 'bg-blue-100 text-blue-600' : 'text-slate-400'"
+            @click.stop="$emit('set-segment-mode', index, mode)"
+            :title="mode.charAt(0).toUpperCase() + mode.slice(1)"
+          >
+            <span class="material-symbols-outlined text-base">
+              {{ mode === 'auto' ? 'directions_car' : (mode === 'bicycle' ? 'directions_bike' : 'directions_walk') }}
+            </span>
+          </button>
+        </div>
+      </div>
+      <div class="mb-2 flex items-center justify-between">
+        <div
+          class="inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold"
+          :style="getBadgeStyle(index)"
+        >
+          {{ index + 1 }}
+        </div>
+        <button
+          type="button"
+          class="drag-handle inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-500 hover:bg-slate-50"
+          aria-label="Drag to reorder"
+          title="Drag to reorder"
+          @click.stop
+        >
+          <svg viewBox="0 0 24 24" class="h-4 w-4" fill="currentColor" aria-hidden="true">
+            <circle cx="9" cy="6" r="1.4"></circle>
+            <circle cx="15" cy="6" r="1.4"></circle>
+            <circle cx="9" cy="12" r="1.4"></circle>
+            <circle cx="15" cy="12" r="1.4"></circle>
+            <circle cx="9" cy="18" r="1.4"></circle>
+            <circle cx="15" cy="18" r="1.4"></circle>
+          </svg>
+        </button>
+      </div>
+
+      <template v-if="editingStopId !== stop.id">
+        <h2 class="mb-1 text-lg font-semibold">{{ stop.title }}</h2>
+        <p class="text-sm text-slate-600">{{ stop.description }}</p>
+        <div class="mt-3 flex gap-2">
+          <button type="button" class="rounded-md border border-slate-300 px-2.5 py-1.5 text-xs font-semibold hover:bg-slate-50" @click.stop="$emit('start-edit', stop)">Edit</button>
+          <button type="button" class="rounded-md border border-rose-300 px-2.5 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50" @click.stop="$emit('delete-stop', index)">Delete</button>
+        </div>
+      </template>
+
+      <template v-else>
+        <div class="space-y-2" @click.stop>
+          <div class="relative autocomplete-edit">
+            <input
+              v-model.trim="editForm.query"
+              @input="$emit('edit-query-input')"
+              @focus="showEditSuggestions = true"
+              @keydown.down.prevent="$emit('move-edit-selection', 1)"
+              @keydown.up.prevent="$emit('move-edit-selection', -1)"
+              @keydown.enter.prevent="$emit('select-highlighted-edit')"
+              @keydown.esc="$emit('cancel-edit')"
+              placeholder="Search new place/address"
+              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-blue-500 focus:ring-2"
+            />
+
+            <div
+              v-if="showEditSuggestions && editSuggestions.length"
+              class="absolute z-40 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg"
+            >
+              <button
+                v-for="(item, idx) in editSuggestions"
+                :key="item.place_id"
+                type="button"
+                class="block w-full px-3 py-2 text-left text-sm hover:bg-slate-100"
+                :class="idx === editHighlighted ? 'bg-slate-100' : ''"
+                @mousedown.prevent="$emit('select-edit-suggestion', item)"
+              >
+                {{ item.display_name }}
+              </button>
+            </div>
+          </div>
+
+          <input v-model.trim="editForm.title" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-blue-500 focus:ring-2" />
+          <textarea v-model.trim="editForm.description" rows="2" class="w-full resize-y rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-blue-500 focus:ring-2"></textarea>
+          <input v-model.number="editForm.zoomLevel" type="number" min="2" max="18" step="0.1" class="w-28 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-blue-500 focus:ring-2" />
+
+          <div class="flex gap-2">
+            <button type="button" class="rounded-md bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-blue-700" @click="$emit('save-edit')">Save</button>
+            <button type="button" class="rounded-md border border-slate-300 px-2.5 py-1.5 text-xs font-semibold hover:bg-slate-50" @click="$emit('cancel-edit')">Cancel</button>
+          </div>
+        </div>
+      </template>
+    </article>
+  </script>
 
   <script src="https://unpkg.com/maplibre-gl@5.1.0/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
@@ -293,9 +333,13 @@
   <script src="js/state.js"></script>
   <script src="js/services/storage.js"></script>
   <script src="js/services/kml.js"></script>
+  <script src="js/services/itinerary.js"></script>
   <script src="js/search.js"></script>
   <script src="js/routing.js"></script>
   <script src="js/map.js"></script>
+  <script src="js/components/StopCard.js"></script>
+  <script src="js/components/AddStopMenu.js"></script>
+  <script src="js/components/SourcePrompt.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

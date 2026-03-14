@@ -1,8 +1,14 @@
 (function appModule() {
   const { createApp, nextTick } = Vue;
   const RC = window.RouteCraft;
+  const ItineraryService = RC.ItineraryService;
 
   createApp({
+    components: {
+      'stop-card': window.StopCard,
+      'add-stop-menu': window.AddStopMenu,
+      'source-prompt': window.SourcePrompt
+    },
     data() {
       return {
         stops: structuredClone(RC.initialStops),
@@ -17,10 +23,6 @@
           "#EF4444", "#22C55E"
         ],
 
-        addForm: RC.createEmptyForm(),
-        addSuggestions: [],
-        addHighlighted: -1,
-        showAddSuggestions: false,
         addMenuOpen: false,
 
         editingStopId: null,
@@ -40,43 +42,7 @@
       };
     },
 
-    computed: {
-      canAddStop() {
-        return (
-          this.addForm.title.trim() &&
-          Number.isFinite(this.addForm.zoomLevel) &&
-          Number.isFinite(this.addForm.latitude) &&
-          Number.isFinite(this.addForm.longitude)
-        );
-      }
-    },
-
     methods: {
-      sanitizeStops(rawStops) {
-        if (!Array.isArray(rawStops)) return [];
-        return rawStops
-          .map((stop) => ({
-            id: Number.isFinite(Number(stop.id)) ? Number(stop.id) : null,
-            title: String(stop.title || "").trim(),
-            description: String(stop.description || "").trim(),
-            longitude: Number(stop.longitude),
-            latitude: Number(stop.latitude),
-            zoomLevel: RC.clampZoom(stop.zoomLevel),
-            searchQuery: String(stop.searchQuery || stop.title || "").trim(),
-            transportMode: stop.transportMode || (stop.id === 1 ? null : "auto")
-          }))
-          .filter((stop) => stop.title && Number.isFinite(stop.longitude) && Number.isFinite(stop.latitude));
-      },
-
-      updateStopIdsAndNextId() {
-        this.stops = this.stops.map((stop, idx) => ({
-          ...stop,
-          id: idx + 1,
-          transportMode: idx === 0 ? null : (stop.transportMode || "auto")
-        }));
-        this.nextId = this.stops.length + 1;
-      },
-
       saveState() {
         const payload = { stops: this.stops, activeIndex: this.activeIndex };
         RC.saveToLocalStorage(payload);
@@ -94,14 +60,18 @@
 
       applyLoadedData(payload) {
         try {
-          const sanitized = this.sanitizeStops(payload?.stops);
+          const sanitized = ItineraryService.sanitizeStops(payload?.stops);
           if (!sanitized.length) return false;
-          this.stops = sanitized;
-          this.updateStopIdsAndNextId();
+          
+          const result = ItineraryService.updateStopIdsAndNextId(sanitized);
+          this.stops = result.stops;
+          this.nextId = result.nextId;
+          
           this.activeIndex = Math.min(
             Math.max(Number(payload.activeIndex) || 0, 0),
             this.stops.length - 1
           );
+          
           if (this.mapLoaded) {
             this.syncMapData();
             if (this.activeIndex >= 0) {
@@ -142,31 +112,13 @@
         }
       },
 
-      getRouteColor(index) {
-        return this.routeColors[index % this.routeColors.length];
-      },
-
-      getBadgeStyle(index) {
-        const color = this.getRouteColor(index);
-        return {
-          backgroundColor: `${color}1A`,
-          color,
-          border: `1px solid ${color}55`
-        };
-      },
-
       exportKml() {
         if (!this.stops.length) return alert("No stops to export.");
-        
-        // Use the KML Service to generate the string
         const kml = RC.generateKml(this.stops);
-
         const blob = new Blob([kml], { type: "application/vnd.google-earth.kml+xml" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
-        a.href = url;
-        a.download = "routecraft-itinerary.kml";
-        a.click();
+        a.href = url; a.download = "routecraft-itinerary.kml"; a.click();
         URL.revokeObjectURL(url);
       },
 
@@ -175,29 +127,20 @@
       async importKmlFile(event) {
         const file = event?.target?.files?.[0];
         if (!file) return;
-
         try {
           const text = await file.text();
-          
-          // Use the KML Service to parse the string
           const placemarks = RC.parseKml(text);
-
-          if (!placemarks) {
-            alert("No valid stops found in KML.");
-            return;
-          }
-
-          this.stops = placemarks;
-          this.updateStopIdsAndNextId();
+          if (!placemarks) return alert("No valid stops found in KML.");
+          
+          const result = ItineraryService.updateStopIdsAndNextId(placemarks);
+          this.stops = result.stops;
+          this.nextId = result.nextId;
+          
           this.activeIndex = 0;
           this.syncMapData();
           this.flyToStop(0, false);
-        } catch (e) {
-          console.error("KML import failed", e);
-          alert("Failed to import KML.");
-        } finally {
-          event.target.value = "";
-        }
+        } catch (e) { alert("Failed to import KML."); }
+        event.target.value = "";
       },
 
       initMap() {
@@ -228,13 +171,9 @@
       async setSegmentMode(index, mode) {
         if (index <= 0 || index >= this.stops.length) return;
         this.stops[index].transportMode = mode;
-
-        // Update just this segment's geometry for efficiency
         const start = this.stops[index - 1];
         const end = this.stops[index];
         const coords = await RC.fetchRouteSegment(start, end, mode, this.stadiaApiKey);
-
-        // Replace in array (triggering reactivity if needed, though we call syncMapData)
         this.routeGeometries[index - 1] = coords;
         this.syncMapData();
         this.saveState();
@@ -259,44 +198,13 @@
 
       toggleAddMenu() {
         this.addMenuOpen = !this.addMenuOpen;
-        if (!this.addMenuOpen) this.showAddSuggestions = false;
       },
 
-      async runAddSearch() {
-        this.addSuggestions = await RC.fetchSuggestions(this.addForm.query);
-        this.addHighlighted = this.addSuggestions.length ? 0 : -1;
-        this.showAddSuggestions = true;
-      },
-
-      onAddQueryInput: RC.debounce(function() { this.runAddSearch(); }, 280),
-      onEditQueryInput: RC.debounce(function() { this.runEditSearch(); }, 280),
-
-      moveAddSelection(step) {
-        if (!this.addSuggestions.length) return;
-        const count = this.addSuggestions.length;
-        this.addHighlighted = (this.addHighlighted + step + count) % count;
-      },
-
-      selectHighlightedAdd() {
-        if (this.addHighlighted < 0 || this.addHighlighted >= this.addSuggestions.length) return;
-        this.selectAddSuggestion(this.addSuggestions[this.addHighlighted]);
-      },
-
-      selectAddSuggestion(item) {
-        this.addForm.query = item.display_name;
-        this.addForm.searchQuery = item.display_name;
-        this.addForm.latitude = Number.parseFloat(item.lat);
-        this.addForm.longitude = Number.parseFloat(item.lon);
-        if (!this.addForm.title.trim()) this.addForm.title = item.display_name.split(",")[0].trim();
-        this.showAddSuggestions = false;
-      },
-
-      addStop() {
-        if (!this.canAddStop) return;
-        this.stops.push({ id: this.nextId++, ...this.addForm, title: this.addForm.title.trim(), zoomLevel: RC.clampZoom(this.addForm.zoomLevel) });
+      onComponentAddStop(formData) {
+        this.stops = ItineraryService.addStop(this.stops, formData, this.nextId);
+        this.nextId++;
         this.syncMapData();
         this.flyToStop(this.stops.length - 1);
-        this.addForm = RC.createEmptyForm();
         this.addMenuOpen = false;
       },
 
@@ -311,6 +219,8 @@
         this.editHighlighted = this.editSuggestions.length ? 0 : -1;
         this.showEditSuggestions = true;
       },
+
+      onEditQueryInput: RC.debounce(function() { this.runEditSearch(); }, 280),
 
       moveEditSelection(step) {
         if (!this.editSuggestions.length) return;
@@ -334,7 +244,12 @@
       saveEdit() {
         const idx = this.stops.findIndex(s => s.id === this.editingStopId);
         if (idx === -1) return;
-        this.stops[idx] = { ...this.stops[idx], ...this.editForm, title: this.editForm.title.trim(), zoomLevel: RC.clampZoom(this.editForm.zoomLevel) };
+        this.stops[idx] = { 
+          ...this.stops[idx], 
+          ...this.editForm, 
+          title: this.editForm.title.trim(), 
+          zoomLevel: RC.clampZoom(this.editForm.zoomLevel) 
+        };
         this.editingStopId = null;
         this.syncMapData();
         this.flyToStop(idx, false);
@@ -347,7 +262,7 @@
 
       deleteStop(index) {
         if (!confirm("Remove this stop?")) return;
-        this.stops.splice(index, 1);
+        this.stops = ItineraryService.deleteStop(this.stops, index);
         this.activeIndex = Math.min(this.activeIndex, this.stops.length - 1);
         this.syncMapData();
         if (this.activeIndex >= 0) this.flyToStop(this.activeIndex, false);
@@ -358,11 +273,16 @@
         window.Sortable.create(this.$refs.cardsList, {
           handle: ".drag-handle", animation: 170,
           onEnd: (e) => {
-            const moved = this.stops.splice(e.oldIndex, 1)[0];
-            this.stops.splice(e.newIndex, 0, moved);
-            if (this.activeIndex === e.oldIndex) this.activeIndex = e.newIndex;
-            else if (e.oldIndex < this.activeIndex && e.newIndex >= this.activeIndex) this.activeIndex--;
-            else if (e.oldIndex > this.activeIndex && e.newIndex <= this.activeIndex) this.activeIndex++;
+            const oldIdx = e.oldIndex;
+            const newIdx = e.newIndex;
+            if (oldIdx === newIdx) return;
+
+            this.stops = ItineraryService.reorderStops(this.stops, oldIdx, newIdx);
+
+            if (this.activeIndex === oldIdx) this.activeIndex = newIdx;
+            else if (oldIdx < this.activeIndex && newIdx >= this.activeIndex) this.activeIndex--;
+            else if (oldIdx > this.activeIndex && newIdx <= this.activeIndex) this.activeIndex++;
+            
             this.syncMapData();
             if (this.activeIndex >= 0) this.flyToStop(this.activeIndex, false);
           }
@@ -378,8 +298,9 @@
     mounted() {
       const urlPayload = RC.getHashData();
       const localPayload = RC.getFromLocalStorage();
-      const urlValid = this.sanitizeStops(urlPayload?.stops).length > 0;
-      const localValid = this.sanitizeStops(localPayload?.stops).length > 0;
+      
+      const urlValid = ItineraryService.sanitizeStops(urlPayload?.stops).length > 0;
+      const localValid = ItineraryService.sanitizeStops(localPayload?.stops).length > 0;
 
       if (urlValid && localValid) {
         this.pendingUrlData = urlPayload;
@@ -398,7 +319,6 @@
 
       document.addEventListener("pointerdown", (e) => {
         if (!e.target.closest(".add-stop-menu")) this.addMenuOpen = false;
-        if (!e.target.closest(".autocomplete-add")) this.showAddSuggestions = false;
         if (!e.target.closest(".autocomplete-edit")) this.showEditSuggestions = false;
       }, true);
     }
