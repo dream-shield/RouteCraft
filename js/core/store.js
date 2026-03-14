@@ -34,6 +34,14 @@
     activeIndex: 0,
 
     /**
+     * Returns the days sorted by date.
+     * @returns {Day[]}
+     */
+    get sortedDays() {
+      return [...this.days].sort((a, b) => a.date.localeCompare(b.date));
+    },
+
+    /**
      * Adds a new stop to the itinerary.
      * @param {Object} formData - Data for the new stop.
      */
