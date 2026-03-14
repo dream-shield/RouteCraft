@@ -105,7 +105,7 @@
       copyShareLink() {
         const url = window.location.href;
         const complete = () => this.showToast("Link copied to clipboard!", "success");
-        
+
         if (navigator.clipboard?.writeText) {
           navigator.clipboard.writeText(url).then(complete);
         } else {

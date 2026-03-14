@@ -14,7 +14,7 @@ window.RouteCraft.clampZoom = function clampZoom(value) {
 };
 
 /**
- * Creates a debounced version of a function that delays its execution until 
+ * Creates a debounced version of a function that delays its execution until
  * after a specified amount of time has elapsed since the last call.
  * @param {Function} fn - The function to debounce.
  * @param {number} delay - The delay in milliseconds.

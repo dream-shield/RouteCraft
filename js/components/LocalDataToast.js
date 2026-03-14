@@ -12,7 +12,7 @@
     },
     emits: [
       /** Triggered when the user chooses to restore local data */
-      'restore', 
+      'restore',
       /** Triggered when the user dismisses the notification */
       'dismiss'
     ]

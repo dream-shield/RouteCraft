@@ -46,7 +46,7 @@ The main Vue instance coordinates between the components and services. It mainta
 
 ## Data Flow
 
-1.  **Initialization:** 
+1.  **Initialization:**
     - `app.js` checks `StorageService` for data in the URL hash and then `LocalStorage`.
     - If a conflict exists, `SourcePrompt` is shown.
     - `ItineraryService` sanitizes the chosen data.

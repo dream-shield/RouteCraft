@@ -15,7 +15,7 @@ window.RouteCraft = window.RouteCraft || {};
    */
   function sanitizeStops(rawStops) {
     if (!Array.isArray(rawStops)) return [];
-    
+
     const seenDayIds = new Set();
     const seenStopIds = new Set();
 
@@ -39,7 +39,7 @@ window.RouteCraft = window.RouteCraft || {};
       .filter((stop) => {
         const isValid = stop.title && Number.isFinite(stop.longitude) && Number.isFinite(stop.latitude);
         if (!isValid) return false;
-        
+
         if (seenStopIds.has(stop.id)) return false;
         seenStopIds.add(stop.id);
         return true;
@@ -54,13 +54,13 @@ window.RouteCraft = window.RouteCraft || {};
   function createDay(existingDays = []) {
     const id = Math.random().toString(36).substr(2, 9);
     let date = new Date();
-    
+
     if (existingDays.length > 0) {
       const lastDay = existingDays[existingDays.length - 1];
       date = new Date(lastDay.date);
       date.setDate(date.getDate() + 1);
     }
-    
+
     return {
       id,
       date: date.toISOString().split('T')[0],
@@ -76,7 +76,7 @@ window.RouteCraft = window.RouteCraft || {};
    */
   function migratePayload(payload) {
     if (!payload) return { stops: [], days: [] };
-    
+
     // If it already has days, return as is (but ensure it's an array)
     if (Array.isArray(payload.days) && payload.days.length > 0) {
       return payload;
@@ -85,7 +85,7 @@ window.RouteCraft = window.RouteCraft || {};
     // Create a default Day 1
     const day1 = createDay([]);
     day1.description = "Day 1";
-    
+
     const stops = Array.isArray(payload.stops) ? payload.stops : [];
     const migratedStops = stops.map(stop => ({
       ...stop,

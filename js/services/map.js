@@ -121,16 +121,16 @@ window.RouteCraft = window.RouteCraft || {};
       const color = routeColors[i % routeColors.length];
       const origin = dayStops[i];
       const destination = dayStops[i + 1];
-      
+
       const originalIdx = fullStops.findIndex(s => s.id === origin.id);
       const nextIdx = fullStops.findIndex(s => s.id === destination.id);
       const isActuallyAdjacent = nextIdx === originalIdx + 1;
-      
+
       const fallbackCoords = [
         [origin.longitude, origin.latitude],
         [destination.longitude, destination.latitude]
       ];
-      
+
       const coords = isActuallyAdjacent ? (routeGeometries[originalIdx] || fallbackCoords) : fallbackCoords;
 
       features.push({

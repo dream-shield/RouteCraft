@@ -95,9 +95,9 @@
     reorderStops(oldIndex, newIndex) {
       if (oldIndex === newIndex) return;
       const originalActiveId = this.stops[this.activeIndex]?.id;
-      
+
       this.stops = ItineraryService.reorderStops(this.stops, oldIndex, newIndex);
-      
+
       // Keep the same stop active after reordering
       if (originalActiveId !== undefined) {
         this.activeIndex = this.stops.findIndex(s => s.id === originalActiveId);
@@ -146,17 +146,17 @@
      */
     loadPayload(payload) {
       const ItineraryService = window.RouteCraft.ItineraryService;
-      
+
       // Handle migration of legacy flat lists
       const migrated = ItineraryService.migratePayload(payload);
-      
+
       const sanitizedStops = ItineraryService.sanitizeStops(migrated.stops);
       if (!sanitizedStops.length) return false;
 
       this.stops = sanitizedStops;
       this.days = migrated.days || [];
       this.activeDayId = migrated.activeDayId || (this.days[0] && this.days[0].id) || null;
-      
+
       this.activeIndex = Math.min(
         Math.max(Number(payload.activeIndex) || 0, 0),
         this.stops.length - 1
@@ -169,11 +169,11 @@
    * Auto-Persistence: Watch for changes and update storage.
    */
   watch(
-    () => ({ 
-      stops: store.stops, 
-      days: store.days, 
+    () => ({
+      stops: store.stops,
+      days: store.days,
       activeDayId: store.activeDayId,
-      activeIndex: store.activeIndex 
+      activeIndex: store.activeIndex
     }),
     (newVal) => {
       RC.saveToLocalStorage(newVal);
