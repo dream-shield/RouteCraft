@@ -1,13 +1,13 @@
 /**
  * @fileoverview Main entry point for the RouteCraft application.
- * Initializes the Vue.js app, manages global state, and coordinates
- * between mapping, itinerary management, and persistence services.
+ * Initializes the Vue.js app, integrates the reactive store,
+ * and coordinates between mapping and UI components.
  */
 
 (function appModule() {
   const { createApp, nextTick } = Vue;
   const RC = window.RouteCraft;
-  const ItineraryService = RC.ItineraryService;
+  const store = RC.store;
 
   createApp({
     components: {
@@ -17,12 +17,9 @@
     },
     data() {
       return {
-        /** @type {Stop[]} The current itinerary stops */
-        stops: structuredClone(RC.initialStops),
-        /** @type {number} The next unique ID to assign to a new stop */
-        nextId: RC.initialStops.length + 1,
-        /** @type {number} The currently focused stop index */
-        activeIndex: 0,
+        // Reference the global reactive store
+        store,
+
         /** @type {Object|null} The MapLibre Map instance */
         map: null,
         /** @type {boolean} True if the map has finished loading */
@@ -50,8 +47,6 @@
         pendingUrlData: null,
         /** @type {ItineraryPayload|null} Data found in LocalStorage */
         pendingLocalData: null,
-        /** @type {boolean} Flag to prevent hash update loops */
-        suppressHashUpdate: false,
 
         /** @type {string} Stadia Maps API key for routing */
         stadiaApiKey: "613372b7-785f-4b4e-9df1-0ca400312a1a",
@@ -60,65 +55,17 @@
       };
     },
 
+    computed: {
+      // Shorthand aliases to store properties
+      stops() { return this.store.stops; },
+      activeIndex() { return this.store.activeIndex; }
+    },
+
     methods: {
-      /**
-       * Saves the current itinerary state to LocalStorage and triggers a hash update.
-       */
-      saveState() {
-        const payload = { stops: this.stops, activeIndex: this.activeIndex };
-        RC.saveToLocalStorage(payload);
-        this.scheduleHashUpdate();
-      },
-
-      /**
-       * Schedules a URL hash update with a small debounce to improve performance.
-       */
-      scheduleHashUpdate() {
-        if (this._hashTimer) clearTimeout(this._hashTimer);
-        this._hashTimer = setTimeout(() => {
-          if (this.suppressHashUpdate) return;
-          const payload = { stops: this.stops, activeIndex: this.activeIndex };
-          RC.setHash(payload);
-        }, 250);
-      },
-
-      /**
-       * Sanitizes and applies a data payload to the current app state.
-       * @param {ItineraryPayload} payload - The payload to apply.
-       * @returns {boolean} True if data was successfully applied.
-       */
-      applyLoadedData(payload) {
-        try {
-          const sanitized = ItineraryService.sanitizeStops(payload?.stops);
-          if (!sanitized.length) return false;
-
-          const result = ItineraryService.updateStopIdsAndNextId(sanitized);
-          this.stops = result.stops;
-          this.nextId = result.nextId;
-
-          this.activeIndex = Math.min(
-            Math.max(Number(payload.activeIndex) || 0, 0),
-            this.stops.length - 1
-          );
-
-          if (this.mapLoaded) {
-            this.syncMapData();
-            if (this.activeIndex >= 0) {
-              this.flyToStop(this.activeIndex, false);
-            }
-          }
-          return true;
-        } catch (e) {
-          console.error("Failed to apply loaded data", e);
-          return false;
-        }
-      },
-
       /** Handles the decision to use data loaded from the URL. */
       chooseUrlData() {
         if (this.pendingUrlData) {
-          this.applyLoadedData(this.pendingUrlData);
-          this.saveState();
+          this.store.loadPayload(this.pendingUrlData);
         }
         this.sourcePromptOpen = false;
       },
@@ -126,16 +73,13 @@
       /** Handles the decision to use data loaded from LocalStorage. */
       chooseLocalData() {
         if (this.pendingLocalData) {
-          this.applyLoadedData(this.pendingLocalData);
-          this.scheduleHashUpdate();
+          this.store.loadPayload(this.pendingLocalData);
         }
         this.sourcePromptOpen = false;
       },
 
       /** Copies a shareable link (URL with encoded hash) to the clipboard. */
       copyShareLink() {
-        const payload = { stops: this.stops, activeIndex: this.activeIndex };
-        RC.setHash(payload);
         const url = window.location.href;
         if (navigator.clipboard?.writeText) {
           navigator.clipboard.writeText(url);
@@ -170,11 +114,7 @@
           const placemarks = RC.parseKml(text);
           if (!placemarks) return alert("No valid stops found in KML.");
 
-          const result = ItineraryService.updateStopIdsAndNextId(placemarks);
-          this.stops = result.stops;
-          this.nextId = result.nextId;
-
-          this.activeIndex = 0;
+          this.store.loadPayload({ stops: placemarks, activeIndex: 0 });
           this.syncMapData();
           this.flyToStop(0, false);
         } catch (e) { alert("Failed to import KML."); }
@@ -215,14 +155,12 @@
        * @param {TransportMode} mode - The new transport mode.
        */
       async setSegmentMode(index, mode) {
-        if (index <= 0 || index >= this.stops.length) return;
-        this.stops[index].transportMode = mode;
+        this.store.updateStop(index, { transportMode: mode });
         const start = this.stops[index - 1];
         const end = this.stops[index];
         const coords = await RC.fetchRouteSegment(start, end, mode, this.stadiaApiKey);
         this.routeGeometries[index - 1] = coords;
         this.syncMapData();
-        this.saveState();
       },
 
       /**
@@ -232,7 +170,7 @@
        */
       flyToStop(index, shouldScroll = true) {
         if (index < 0 || index >= this.stops.length) return;
-        this.activeIndex = index;
+        this.store.activeIndex = index;
         if (this.mapLoaded) {
           RC.flyToStop(this.map, this.stops[index]);
           this.syncMapData();
@@ -259,8 +197,7 @@
        * @param {Object} formData - Data for the new stop.
        */
       onComponentAddStop(formData) {
-        this.stops = ItineraryService.addStop(this.stops, formData, this.nextId);
-        this.nextId++;
+        this.store.addStop(formData);
         this.syncMapData();
         this.flyToStop(this.stops.length - 1);
         this.addMenuOpen = false;
@@ -290,12 +227,7 @@
       saveEdit() {
         const idx = this.stops.findIndex(s => s.id === this.editingStopId);
         if (idx === -1) return;
-        this.stops[idx] = {
-          ...this.stops[idx],
-          ...this.editForm,
-          title: this.editForm.title.trim(),
-          zoomLevel: RC.clampZoom(this.editForm.zoomLevel)
-        };
+        this.store.updateStop(idx, this.editForm);
         this.editingStopId = null;
         this.syncMapData();
         this.flyToStop(idx, false);
@@ -312,8 +244,7 @@
        */
       deleteStop(index) {
         if (!confirm("Remove this stop?")) return;
-        this.stops = ItineraryService.deleteStop(this.stops, index);
-        this.activeIndex = Math.min(this.activeIndex, this.stops.length - 1);
+        this.store.deleteStop(index);
         this.syncMapData();
         if (this.activeIndex >= 0) this.flyToStop(this.activeIndex, false);
       },
@@ -328,12 +259,7 @@
             const newIdx = e.newIndex;
             if (oldIdx === newIdx) return;
 
-            this.stops = ItineraryService.reorderStops(this.stops, oldIdx, newIdx);
-
-            if (this.activeIndex === oldIdx) this.activeIndex = newIdx;
-            else if (oldIdx < this.activeIndex && newIdx >= this.activeIndex) this.activeIndex--;
-            else if (oldIdx > this.activeIndex && newIdx <= this.activeIndex) this.activeIndex++;
-
+            this.store.reorderStops(oldIdx, newIdx);
             this.syncMapData();
             if (this.activeIndex >= 0) this.flyToStop(this.activeIndex, false);
           }
@@ -342,26 +268,25 @@
     },
 
     watch: {
-      stops: { handler() { this.saveState(); this.updateRouteGeometries(); }, deep: true },
-      activeIndex() { this.saveState(); }
+      stops: { handler() { this.updateRouteGeometries(); }, deep: true },
+      activeIndex() { this.syncMapData(); }
     },
 
     mounted() {
       const urlPayload = RC.getHashData();
       const localPayload = RC.getFromLocalStorage();
 
-      const urlValid = ItineraryService.sanitizeStops(urlPayload?.stops).length > 0;
-      const localValid = ItineraryService.sanitizeStops(localPayload?.stops).length > 0;
+      const urlValid = RC.ItineraryService.sanitizeStops(urlPayload?.stops).length > 0;
+      const localValid = RC.ItineraryService.sanitizeStops(localPayload?.stops).length > 0;
 
       if (urlValid && localValid) {
         this.pendingUrlData = urlPayload;
         this.pendingLocalData = localPayload;
         this.sourcePromptOpen = true;
       } else if (urlValid) {
-        this.applyLoadedData(urlPayload);
-        RC.saveToLocalStorage(urlPayload);
+        this.store.loadPayload(urlPayload);
       } else if (localValid) {
-        this.applyLoadedData(localPayload);
+        this.store.loadPayload(localPayload);
       }
 
       this.initMap();
@@ -371,8 +296,6 @@
       // Global click listener to close menus when clicking outside
       document.addEventListener("pointerdown", (e) => {
         if (!e.target.closest(".add-stop-menu")) this.addMenuOpen = false;
-        // Search suggestions handle their own closing via 'esc' or click-away inside PlaceSearch if needed,
-        // but here we just ensure the global menus behave.
       }, true);
     }
   }).mount("#app");
