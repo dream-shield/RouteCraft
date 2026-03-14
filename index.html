@@ -207,6 +207,30 @@
       </section>
 
     </div>
+
+    <!-- Global Toast Notifications -->
+    <transition
+      enter-active-class="transform transition ease-out duration-300"
+      enter-from-class="translate-y-4 opacity-0"
+      enter-to-class="translate-y-0 opacity-100"
+      leave-active-class="transition ease-in duration-200"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div v-if="toast" class="fixed bottom-6 left-1/2 z-[100] -translate-x-1/2">
+        <div 
+          class="flex items-center gap-3 rounded-2xl px-4 py-3 shadow-xl backdrop-blur border border-white/20 text-white min-w-[280px]"
+          :class="toast.type === 'success' ? 'bg-emerald-600/90' : 'bg-slate-800/90'"
+        >
+          <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/20">
+            <span class="material-symbols-outlined text-lg">
+              {{ toast.type === 'success' ? 'check_circle' : 'info' }}
+            </span>
+          </div>
+          <span class="text-sm font-semibold tracking-wide">{{ toast.message }}</span>
+        </div>
+      </div>
+    </transition>
   </div>
 
   <!-- VUE TEMPLATES (Used by components in js/components/) -->

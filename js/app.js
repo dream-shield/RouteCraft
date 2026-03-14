@@ -44,6 +44,10 @@
 
         /** @type {boolean} Visibility of the local data toast */
         showLocalDataToast: false,
+        /** @type {Object|null} Active toast notification state */
+        toast: null,
+        /** @type {number|null} Timeout ID for auto-hiding the toast */
+        toastTimeout: null,
         /** @type {ItineraryPayload|null} Data found in the URL hash */
         pendingUrlData: null,
         /** @type {ItineraryPayload|null} Data found in LocalStorage */
@@ -83,13 +87,30 @@
         this.pendingLocalData = null;
       },
 
+      /**
+       * Displays a temporary toast notification.
+       * @param {string} message - The message to display.
+       * @param {string} [type='info'] - The type of toast (info, success, error).
+       * @param {number} [duration=3000] - Duration in ms.
+       */
+      showToast(message, type = 'info', duration = 3000) {
+        if (this.toastTimeout) clearTimeout(this.toastTimeout);
+        this.toast = { message, type };
+        this.toastTimeout = setTimeout(() => {
+          this.toast = null;
+        }, duration);
+      },
+
       /** Copies a shareable link (URL with encoded hash) to the clipboard. */
       copyShareLink() {
         const url = window.location.href;
+        const complete = () => this.showToast("Link copied to clipboard!", "success");
+        
         if (navigator.clipboard?.writeText) {
-          navigator.clipboard.writeText(url);
+          navigator.clipboard.writeText(url).then(complete);
         } else {
           window.prompt("Copy this link:", url);
+          complete();
         }
       },
 
