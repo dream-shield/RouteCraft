@@ -8,7 +8,8 @@ window.RouteCraft.initialStops = [
     longitude: -122.4783,
     latitude: 37.8199,
     zoomLevel: 12.7,
-    searchQuery: "Golden Gate Bridge"
+    searchQuery: "Golden Gate Bridge",
+    transportMode: null
   },
   {
     id: 2,
@@ -17,7 +18,8 @@ window.RouteCraft.initialStops = [
     longitude: -119.573,
     latitude: 37.7456,
     zoomLevel: 11.6,
-    searchQuery: "Yosemite Valley"
+    searchQuery: "Yosemite Valley",
+    transportMode: "auto"
   },
   {
     id: 3,
@@ -26,7 +28,8 @@ window.RouteCraft.initialStops = [
     longitude: -115.1728,
     latitude: 36.1147,
     zoomLevel: 12.8,
-    searchQuery: "Las Vegas Strip"
+    searchQuery: "Las Vegas Strip",
+    transportMode: "auto"
   },
   {
     id: 4,
@@ -35,7 +38,8 @@ window.RouteCraft.initialStops = [
     longitude: -112.1401,
     latitude: 36.0544,
     zoomLevel: 11.4,
-    searchQuery: "Grand Canyon South Rim"
+    searchQuery: "Grand Canyon South Rim",
+    transportMode: "auto"
   },
   {
     id: 5,
@@ -44,7 +48,8 @@ window.RouteCraft.initialStops = [
     longitude: -118.4961,
     latitude: 34.0094,
     zoomLevel: 13,
-    searchQuery: "Santa Monica Pier"
+    searchQuery: "Santa Monica Pier",
+    transportMode: "auto"
   }
 ];
 
@@ -56,6 +61,7 @@ window.RouteCraft.createEmptyForm = function createEmptyForm() {
     zoomLevel: 12,
     latitude: null,
     longitude: null,
-    searchQuery: ""
+    searchQuery: "",
+    transportMode: "auto"
   };
 };

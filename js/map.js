@@ -94,33 +94,30 @@ window.RouteCraft.createMapManager = function createMapManager(maplibreglRef) {
     });
   }
 
-  function refreshRouteLayer(map, stops, routeColors) {
+  function refreshRouteLayer(map, stops, routeColors, routeGeometries = []) {
     const segments = [];
-    const steps = 10;
+
     for (let i = 0; i < stops.length - 1; i += 1) {
-      const start = [stops[i].longitude, stops[i].latitude];
-      const end = [stops[i + 1].longitude, stops[i + 1].latitude];
       const colorStart = routeColors[i % routeColors.length];
       const colorEnd = routeColors[(i + 1) % routeColors.length];
 
+      const coords = routeGeometries[i] || [
+        [stops[i].longitude, stops[i].latitude],
+        [stops[i + 1].longitude, stops[i + 1].latitude]
+      ];
+
+      const steps = coords.length - 1;
       for (let s = 0; s < steps; s += 1) {
         const t0 = s / steps;
         const t1 = (s + 1) / steps;
         const segmentColor = mixColor(colorStart, colorEnd, (t0 + t1) / 2);
-        const coord0 = [
-          lerp(start[0], end[0], t0),
-          lerp(start[1], end[1], t0)
-        ];
-        const coord1 = [
-          lerp(start[0], end[0], t1),
-          lerp(start[1], end[1], t1)
-        ];
+
         segments.push({
           type: "Feature",
           properties: { color: segmentColor },
           geometry: {
             type: "LineString",
-            coordinates: [coord0, coord1]
+            coordinates: [coords[s], coords[s+1]]
           }
         });
       }

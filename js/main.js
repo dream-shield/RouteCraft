@@ -45,7 +45,10 @@
         pendingUrlData: null,
         pendingLocalData: null,
         suppressHashUpdate: false,
-        lastHashPayload: ""
+        lastHashPayload: "",
+
+        stadiaApiKey: "613372b7-785f-4b4e-9df1-0ca400312a1a",
+        routeGeometries: []
       };
     },
 
@@ -71,13 +74,18 @@
             longitude: Number(stop.longitude),
             latitude: Number(stop.latitude),
             zoomLevel: RouteCraft.clampZoom(stop.zoomLevel),
-            searchQuery: String(stop.searchQuery || stop.title || "").trim()
+            searchQuery: String(stop.searchQuery || stop.title || "").trim(),
+            transportMode: stop.transportMode || (stop.id === 1 ? null : "auto")
           }))
           .filter((stop) => stop.title && Number.isFinite(stop.longitude) && Number.isFinite(stop.latitude));
       },
 
       updateStopIdsAndNextId() {
-        this.stops = this.stops.map((stop, idx) => ({ ...stop, id: idx + 1 }));
+        this.stops = this.stops.map((stop, idx) => ({
+          ...stop,
+          id: idx + 1,
+          transportMode: idx === 0 ? null : (stop.transportMode || "auto")
+        }));
         this.nextId = this.stops.length + 1;
       },
 
@@ -141,23 +149,31 @@
       },
 
       applyLoadedData(payload) {
-        const sanitized = this.sanitizeStops(payload?.stops);
-        if (!sanitized.length) return false;
-        this.stops = sanitized;
-        this.updateStopIdsAndNextId();
-        this.activeIndex = Math.min(
-          Math.max(Number(payload.activeIndex) || 0, 0),
-          this.stops.length - 1
-        );
-        this.syncMapData();
-        if (this.activeIndex >= 0) {
-          this.flyToStop(this.activeIndex, false);
+        try {
+          const sanitized = this.sanitizeStops(payload?.stops);
+          if (!sanitized.length) return false;
+          this.stops = sanitized;
+          this.updateStopIdsAndNextId();
+          this.activeIndex = Math.min(
+            Math.max(Number(payload.activeIndex) || 0, 0),
+            this.stops.length - 1
+          );
+          if (this.mapLoaded) {
+            this.syncMapData();
+            if (this.activeIndex >= 0) {
+              this.flyToStop(this.activeIndex, false);
+            }
+          }
+          return true;
+        } catch (e) {
+          console.error("Failed to apply loaded data", e);
+          return false;
         }
-        return true;
       },
 
       chooseUrlData() {
-        if (this.pendingUrlData && this.applyLoadedData(this.pendingUrlData)) {
+        if (this.pendingUrlData) {
+          this.applyLoadedData(this.pendingUrlData);
           this.saveToLocalStorage();
           this.setHashFromState();
         }
@@ -167,7 +183,8 @@
       },
 
       chooseLocalData() {
-        if (this.pendingLocalData && this.applyLoadedData(this.pendingLocalData)) {
+        if (this.pendingLocalData) {
+          this.applyLoadedData(this.pendingLocalData);
           this.setHashFromState();
         }
         this.pendingUrlData = null;
@@ -332,7 +349,36 @@ ${placemarks}
           this.activeIndex,
           this.routeColors
         );
-        mapManager.refreshRouteLayer(this.map, this.stops, this.routeColors);
+        mapManager.refreshRouteLayer(this.map, this.stops, this.routeColors, this.routeGeometries);
+      },
+
+      async updateRouteGeometries() {
+        const geometries = [];
+        for (let i = 0; i < this.stops.length - 1; i++) {
+          const start = this.stops[i];
+          const end = this.stops[i + 1];
+          const mode = end.transportMode || "auto";
+          const coords = await RouteCraft.fetchRouteSegment(start, end, mode, this.stadiaApiKey);
+          geometries.push(coords);
+        }
+        this.routeGeometries = geometries;
+        this.syncMapData();
+      },
+
+      async setSegmentMode(index, mode) {
+        if (index <= 0 || index >= this.stops.length) return;
+        this.stops[index].transportMode = mode;
+
+        // Update just this segment's geometry for efficiency
+        const start = this.stops[index - 1];
+        const end = this.stops[index];
+        const coords = await RouteCraft.fetchRouteSegment(start, end, mode, this.stadiaApiKey);
+
+        // Replace in array (triggering reactivity if needed, though we call syncMapData)
+        this.routeGeometries[index - 1] = coords;
+        this.syncMapData();
+        this.saveToLocalStorage();
+        this.scheduleHashUpdate();
       },
 
       flyToStop(index, shouldScroll = true) {
@@ -588,9 +634,13 @@ ${placemarks}
 
     watch: {
       stops: {
-        handler() {
+        handler(newStops, oldStops) {
           this.saveToLocalStorage();
           this.scheduleHashUpdate();
+
+          if (this.mapLoaded && (!oldStops || newStops.length !== oldStops.length)) {
+            this.updateRouteGeometries();
+          }
         },
         deep: true
       },
@@ -637,6 +687,7 @@ ${placemarks}
       this.initMap();
       this.initSortable();
       this.setHashFromState();
+      this.updateRouteGeometries();
 
       this._onDocPointerDown = (event) => this.handleGlobalPointerDown(event);
       this._onDocKeyDown = (event) => this.handleGlobalKeyDown(event);

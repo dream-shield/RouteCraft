@@ -177,10 +177,28 @@
               v-for="(stop, index) in stops"
               :key="stop.id"
               :id="`card-${stop.id}`"
-              class="rounded-2xl border bg-white p-4 shadow transition"
+              class="relative rounded-2xl border bg-white p-4 shadow transition"
               :class="index === activeIndex ? 'border-blue-300 shadow-blue-100' : 'border-slate-200'"
               @click="flyToStop(index)"
             >
+              <!-- Transit Mode Selector (floating above the card) -->
+              <div v-if="index > 0" class="absolute -top-5 left-0 right-0 z-10 flex justify-center">
+                <div class="flex gap-1 rounded-full border border-slate-200 bg-white p-1 shadow-sm backdrop-blur" @click.stop>
+                  <button
+                    v-for="mode in ['auto', 'bicycle', 'pedestrian']"
+                    :key="mode"
+                    type="button"
+                    class="flex h-7 w-7 items-center justify-center rounded-full transition-colors hover:bg-slate-100"
+                    :class="stop.transportMode === mode ? 'bg-blue-100 text-blue-600' : 'text-slate-400'"
+                    @click.stop="setSegmentMode(index, mode)"
+                    :title="mode.charAt(0).toUpperCase() + mode.slice(1)"
+                  >
+                    <span class="material-symbols-outlined text-base">
+                      {{ mode === 'auto' ? 'directions_car' : (mode === 'bicycle' ? 'directions_bike' : 'directions_walk') }}
+                    </span>
+                  </button>
+                </div>
+              </div>
               <div class="mb-2 flex items-center justify-between">
                 <div
                   class="inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold"
@@ -256,10 +274,10 @@
                     <button type="button" class="rounded-md border border-slate-300 px-2.5 py-1.5 text-xs font-semibold hover:bg-slate-50" @click="cancelEdit">Cancel</button>
                   </div>
                 </div>
-              </template>
-            </article>
-          </div>
-          </div>
+                </template>
+                </article>
+                </div>
+
         </div>
       </section>
 
@@ -273,6 +291,7 @@
 
   <script src="js/state.js" defer></script>
   <script src="js/utils.js" defer></script>
+  <script src="js/routing.js" defer></script>
   <script src="js/search.js" defer></script>
   <script src="js/map.js" defer></script>
   <script src="js/main.js" defer></script>
