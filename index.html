@@ -224,7 +224,7 @@
     <article
       :id="'card-' + stop.id"
       class="relative rounded-2xl border bg-white p-4 shadow transition"
-      :class="index === activeIndex ? 'border-blue-300 shadow-blue-100' : 'border-slate-200'"
+      :class="index === activeIndex ? 'border-1 border-blue-300 shadow-blue-100 bg-blue-50' : 'border-slate-200'"
       @click="$emit('fly-to-stop', index)"
     >
       <!-- Transit Mode Selector (floating above the card) -->
