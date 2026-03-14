@@ -199,31 +199,39 @@
   <!-- Template for DayHeader.js -->
   <script type="text/x-template" id="day-header-template">
     <div 
-      class="group sticky top-[72px] z-20 flex flex-col gap-1 rounded-xl border bg-white/95 p-3 shadow-sm backdrop-blur transition-all"
+      class="group sticky top-[72px] z-20 flex flex-col gap-1 rounded-xl border bg-white/95 p-3 shadow-sm backdrop-blur transition-all cursor-pointer"
       :class="isActive ? 'border-blue-400 ring-1 ring-blue-100' : 'border-slate-200'"
-      @click="$emit('select-day')"
+      @click="toggleAndSelect"
     >
       <div class="flex items-center justify-between gap-3">
         <div class="flex items-center gap-3 overflow-hidden">
-          <button 
-            type="button"
-            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-transform"
-            :class="{ 'rotate-180': day.isCollapsed }"
-            @click.stop="$emit('toggle-collapse')"
+          <div 
+            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
           >
-            <span class="material-symbols-outlined">expand_more</span>
-          </button>
+            <span class="material-symbols-outlined">
+              {{ day.isCollapsed ? 'chevron_right' : 'expand_more' }}
+            </span>
+          </div>
           
           <div class="flex flex-col min-w-0">
             <div class="flex items-center gap-2">
+              <span class="text-sm font-bold text-slate-900">{{ formatDate(day.date) }}</span>
+              <button 
+                type="button" 
+                class="flex h-6 w-6 items-center justify-center rounded-md text-slate-300 hover:bg-slate-100 hover:text-blue-600 transition-all"
+                @click.stop="triggerDatePicker"
+                title="Change Date"
+              >
+                <span class="material-symbols-outlined text-base">calendar_today</span>
+              </button>
               <input 
+                ref="dateInput"
                 type="date" 
                 :value="day.date" 
-                class="bg-transparent text-sm font-bold text-slate-900 outline-none focus:text-blue-600"
+                class="sr-only"
                 @input="e => $emit('update-day', { date: e.target.value })"
                 @click.stop
               />
-              <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">{{ formatDate(day.date) }}</span>
             </div>
             <input 
               type="text" 

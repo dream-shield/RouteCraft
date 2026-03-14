@@ -130,7 +130,13 @@
         this.map.on("load", () => {
           this.mapLoaded = true;
           this.syncMapData();
-          if (this.stops.length) this.flyToStop(this.activeIndex, false);
+          
+          const dayStops = this.getStopsForDay(this.activeDayId);
+          if (dayStops.length > 0) {
+            RC.fitToDayStops(this.map, dayStops);
+          } else if (this.stops.length > 0) {
+            this.flyToStop(this.activeIndex, false);
+          }
         });
       },
 
@@ -374,7 +380,14 @@
     watch: {
       stops: { handler() { this.updateRouteGeometries(); }, deep: true },
       "store.days": { handler() { this.initSortable(); }, deep: true },
-      activeIndex() { this.syncMapData(); }
+      activeIndex() { this.syncMapData(); },
+      activeDayId(newDayId) {
+        this.syncMapData();
+        const dayStops = this.getStopsForDay(newDayId);
+        if (this.mapLoaded && dayStops.length > 0) {
+          RC.fitToDayStops(this.map, dayStops);
+        }
+      }
     },
 
     mounted() {
@@ -399,6 +412,9 @@
         if (this.store.loadPayload(localPayload)) {
           this.flyToStop(this.activeIndex, false);
         }
+      } else {
+        // First load or empty state: initialize with migrated initial stops
+        this.store.loadPayload({ stops: RC.initialStops });
       }
 
       this.initMap();

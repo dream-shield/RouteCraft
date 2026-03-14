@@ -191,4 +191,22 @@ window.RouteCraft = window.RouteCraft || {};
       bearing: 0
     });
   };
+
+  /**
+   * Adjusts the map view to fit all stops of a specific day.
+   * @param {Object} map - The map instance.
+   * @param {Stop[]} dayStops - Array of stops for the day.
+   */
+  window.RouteCraft.fitToDayStops = function fitToDayStops(map, dayStops) {
+    if (!dayStops || dayStops.length === 0) return;
+
+    const bounds = new window.maplibregl.LngLatBounds();
+    dayStops.forEach(stop => bounds.extend([stop.longitude, stop.latitude]));
+
+    map.fitBounds(bounds, {
+      padding: { top: 80, bottom: 80, left: 80, right: 80 },
+      maxZoom: 14,
+      duration: 1200
+    });
+  };
 })();
