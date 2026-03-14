@@ -1,6 +1,6 @@
 window.RouteCraft = window.RouteCraft || {};
 
-window.RouteCraft.createMapManager = function createMapManager(maplibreglRef) {
+(function mapModule() {
   function getStyle() {
     return {
       version: 8,
@@ -23,8 +23,8 @@ window.RouteCraft.createMapManager = function createMapManager(maplibreglRef) {
     };
   }
 
-  function create(containerId, firstStop) {
-    const map = new maplibreglRef.Map({
+  window.RouteCraft.createMap = function createMap(maplibregl, containerId, firstStop) {
+    const map = new maplibregl.Map({
       container: containerId,
       style: getStyle(),
       center: [firstStop.longitude, firstStop.latitude],
@@ -34,12 +34,12 @@ window.RouteCraft.createMapManager = function createMapManager(maplibreglRef) {
       bearing: 0
     });
 
-    map.addControl(new maplibreglRef.NavigationControl(), "top-right");
-    map.addControl(new maplibreglRef.ScaleControl({ maxWidth: 130, unit: "imperial" }), "bottom-right");
+    map.addControl(new maplibregl.NavigationControl(), "top-right");
+    map.addControl(new maplibregl.ScaleControl({ maxWidth: 130, unit: "imperial" }), "bottom-right");
     return map;
-  }
+  };
 
-  function renderMarkers(map, stops, existingMarkers, activeIndex, routeColors) {
+  window.RouteCraft.renderMarkers = function renderMarkers(maplibregl, map, stops, existingMarkers, activeIndex, routeColors) {
     existingMarkers.forEach((marker) => marker.remove());
     const markers = [];
 
@@ -54,25 +54,21 @@ window.RouteCraft.createMapManager = function createMapManager(maplibreglRef) {
         markerEl.classList.add("is-active");
       }
 
-      const marker = new maplibreglRef.Marker({ element: markerEl, anchor: "center" })
+      const marker = new maplibregl.Marker({ element: markerEl, anchor: "center" })
         .setLngLat([stop.longitude, stop.latitude])
-        .setPopup(new maplibreglRef.Popup({ offset: 18 }).setHTML(`<strong>${stop.title}</strong>`))
+        .setPopup(new maplibregl.Popup({ offset: 18 }).setHTML(`<strong>${stop.title}</strong>`))
         .addTo(map);
 
       markers.push(marker);
     });
 
     return markers;
-  }
+  };
 
   function hexToRgb(hex) {
     const clean = hex.replace("#", "");
     const bigint = parseInt(clean, 16);
-    return {
-      r: (bigint >> 16) & 255,
-      g: (bigint >> 8) & 255,
-      b: bigint & 255
-    };
+    return { r: (bigint >> 16) & 255, g: (bigint >> 8) & 255, b: bigint & 255 };
   }
 
   function rgbToHex({ r, g, b }) {
@@ -80,9 +76,7 @@ window.RouteCraft.createMapManager = function createMapManager(maplibreglRef) {
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
   }
 
-  function lerp(a, b, t) {
-    return a + (b - a) * t;
-  }
+  function lerp(a, b, t) { return a + (b - a) * t; }
 
   function mixColor(colorA, colorB, t) {
     const a = hexToRgb(colorA);
@@ -94,7 +88,7 @@ window.RouteCraft.createMapManager = function createMapManager(maplibreglRef) {
     });
   }
 
-  function refreshRouteLayer(map, stops, routeColors, routeGeometries = []) {
+  window.RouteCraft.refreshRouteLayer = function refreshRouteLayer(map, stops, routeColors, routeGeometries = []) {
     const segments = [];
 
     for (let i = 0; i < stops.length - 1; i += 1) {
@@ -122,10 +116,7 @@ window.RouteCraft.createMapManager = function createMapManager(maplibreglRef) {
         });
       }
     }
-    const data = {
-      type: "FeatureCollection",
-      features: segments
-    };
+    const data = { type: "FeatureCollection", features: segments };
 
     if (!map.getSource("trip-route")) {
       map.addSource("trip-route", { type: "geojson", data });
@@ -138,11 +129,7 @@ window.RouteCraft.createMapManager = function createMapManager(maplibreglRef) {
         id: "trip-route-glow",
         type: "line",
         source: "trip-route",
-        paint: {
-          "line-color": ["get", "color"],
-          "line-width": 7,
-          "line-opacity": 0.35
-        }
+        paint: { "line-color": ["get", "color"], "line-width": 7, "line-opacity": 0.35 }
       });
     }
 
@@ -152,15 +139,12 @@ window.RouteCraft.createMapManager = function createMapManager(maplibreglRef) {
         type: "line",
         source: "trip-route",
         layout: { "line-cap": "round", "line-join": "round" },
-        paint: {
-          "line-color": ["get", "color"],
-          "line-width": 3.2
-        }
+        paint: { "line-color": ["get", "color"], "line-width": 3.2 }
       });
     }
-  }
+  };
 
-  function flyToStop(map, stop) {
+  window.RouteCraft.flyToStop = function flyToStop(map, stop) {
     map.flyTo({
       center: [stop.longitude, stop.latitude],
       zoom: Math.min((stop.zoomLevel || 12) + 0.8, 18),
@@ -169,12 +153,5 @@ window.RouteCraft.createMapManager = function createMapManager(maplibreglRef) {
       pitch: 0,
       bearing: 0
     });
-  }
-
-  return {
-    create,
-    renderMarkers,
-    refreshRouteLayer,
-    flyToStop
   };
-};
+})();

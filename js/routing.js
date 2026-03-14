@@ -1,7 +1,6 @@
 window.RouteCraft = window.RouteCraft || {};
 
 (function routingModule() {
-  // Simple Polyline6 decoder for Valhalla/Stadia results
   function decodePolyline6(str) {
     let index = 0;
     let lat = 0;
@@ -38,7 +37,6 @@ window.RouteCraft = window.RouteCraft || {};
 
   window.RouteCraft.fetchRouteSegment = async function fetchRouteSegment(start, end, mode, apiKey) {
     if (!apiKey || apiKey === "YOUR_STADIA_API_KEY") {
-      // Fallback to straight line if no API key
       return [
         [start.longitude, start.latitude],
         [end.longitude, end.latitude]
@@ -72,7 +70,6 @@ window.RouteCraft = window.RouteCraft || {};
       return decodePolyline6(shape);
     } catch (error) {
       console.error("Routing error:", error);
-      // Fallback to straight line
       return [
         [start.longitude, start.latitude],
         [end.longitude, end.latitude]
