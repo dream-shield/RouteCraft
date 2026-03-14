@@ -81,7 +81,10 @@ window.RouteCraft = window.RouteCraft || {};
         body: JSON.stringify(body)
       });
 
-      if (!response.ok) throw new Error("Routing request failed");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Routing request failed with status ${response.status}`);
+      }
 
       const data = await response.json();
       const shape = data.trip?.legs?.[0]?.shape;
@@ -89,7 +92,7 @@ window.RouteCraft = window.RouteCraft || {};
 
       return decodePolyline6(shape);
     } catch (error) {
-      console.error("Routing error:", error);
+      console.error("Routing error between", start.title, "and", end.title, ":", error.message);
       return [
         [start.longitude, start.latitude],
         [end.longitude, end.latitude]

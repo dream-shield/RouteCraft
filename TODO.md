@@ -5,7 +5,7 @@ Feature roadmap for the travel itinerary app.
 ## Quick Wins
 
 - [√] Save/Load Itinerary (localStorage + optional JSON import/export)
-- [√] Shareable Link (encode itinerary into URL)
+- [√] Shareable Link (optimized v2 URL format with compressed positional arrays)
 - [√] KML Export/Import (compatible with Google Earth)
 - [ ] Map Fit + Bounds ("fit all stops" and optional trip bounds)
 - [ ] Stop Categories + Icons (custom marker styles by type)
