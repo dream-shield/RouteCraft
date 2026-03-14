@@ -37,7 +37,6 @@ window.RouteCraft = window.RouteCraft || {};
     if (name.startsWith(queryNorm)) score += 200;
     if (name.includes(queryNorm)) score += 120;
     if (compactQuery && compactName.includes(compactQuery)) score += 100;
-    if ((result.display_name || "").toLowerCase().includes("disneyland")) score += 40;
     score += Number(result.importance || 0) * 25;
 
     return score;
