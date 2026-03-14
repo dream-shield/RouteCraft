@@ -147,7 +147,10 @@
       async updateRouteGeometries() {
         const geometries = [];
         for (let i = 0; i < this.stops.length - 1; i++) {
-          geometries.push(await RC.fetchRouteSegment(this.stops[i], this.stops[i + 1], this.stops[i + 1].transportMode || "auto", this.stadiaApiKey));
+          const origin = this.stops[i];
+          const destination = this.stops[i + 1];
+          const mode = destination.transportMode || "auto";
+          geometries.push(await RC.fetchRouteSegment(origin, destination, mode, this.stadiaApiKey));
         }
         this.routeGeometries = geometries;
         this.syncMapData();

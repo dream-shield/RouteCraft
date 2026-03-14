@@ -114,10 +114,13 @@ window.RouteCraft = window.RouteCraft || {};
 
     for (let i = 0; i < stops.length - 1; i += 1) {
       const color = routeColors[i % routeColors.length];
-      const coords = routeGeometries[i] || [
-        [stops[i].longitude, stops[i].latitude],
-        [stops[i + 1].longitude, stops[i + 1].latitude]
+      const origin = stops[i];
+      const destination = stops[i + 1];
+      const fallbackCoords = [
+        [origin.longitude, origin.latitude],
+        [destination.longitude, destination.latitude]
       ];
+      const coords = routeGeometries[i] || fallbackCoords;
 
       features.push({
         type: "Feature",
