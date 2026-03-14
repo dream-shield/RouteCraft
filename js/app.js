@@ -157,13 +157,16 @@
 
       exportKml() {
         if (!this.stops.length) return alert("No stops to export.");
-        const escapeXml = (t) => String(t || "").replace(/[<>&"']/g, (c) => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":"&apos;"}[c]));
-        const placemarks = this.stops.map(s => `    <Placemark><name>${escapeXml(s.title)}</name><description>${escapeXml(s.description)}</description><Point><coordinates>${s.longitude},${s.latitude},0</coordinates></Point></Placemark>`).join("\n");
-        const kml = `<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>RouteCraft Itinerary</name>${placemarks}</Document></kml>`;
+        
+        // Use the KML Service to generate the string
+        const kml = RC.generateKml(this.stops);
+
         const blob = new Blob([kml], { type: "application/vnd.google-earth.kml+xml" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
-        a.href = url; a.download = "routecraft.kml"; a.click();
+        a.href = url;
+        a.download = "routecraft-itinerary.kml";
+        a.click();
         URL.revokeObjectURL(url);
       },
 
@@ -172,22 +175,29 @@
       async importKmlFile(event) {
         const file = event?.target?.files?.[0];
         if (!file) return;
+
         try {
           const text = await file.text();
-          const doc = new DOMParser().parseFromString(text, "application/xml");
-          const placemarks = Array.from(doc.getElementsByTagName("Placemark")).map((p, idx) => {
-            const name = p.getElementsByTagName("name")[0]?.textContent?.trim() || `Stop ${idx + 1}`;
-            const coords = p.getElementsByTagName("coordinates")[0]?.textContent?.trim().split(/\s+/)[0].split(",");
-            return { id: idx + 1, title: name, description: p.getElementsByTagName("description")[0]?.textContent?.trim() || "", longitude: Number(coords[0]), latitude: Number(coords[1]), zoomLevel: 12, searchQuery: name };
-          }).filter(p => Number.isFinite(p.longitude) && Number.isFinite(p.latitude));
-          if (!placemarks.length) return alert("No valid stops found.");
+          
+          // Use the KML Service to parse the string
+          const placemarks = RC.parseKml(text);
+
+          if (!placemarks) {
+            alert("No valid stops found in KML.");
+            return;
+          }
+
           this.stops = placemarks;
           this.updateStopIdsAndNextId();
           this.activeIndex = 0;
           this.syncMapData();
           this.flyToStop(0, false);
-        } catch (e) { alert("Failed to import KML."); }
-        event.target.value = "";
+        } catch (e) {
+          console.error("KML import failed", e);
+          alert("Failed to import KML.");
+        } finally {
+          event.target.value = "";
+        }
       },
 
       initMap() {
@@ -218,7 +228,14 @@
       async setSegmentMode(index, mode) {
         if (index <= 0 || index >= this.stops.length) return;
         this.stops[index].transportMode = mode;
-        this.routeGeometries[index - 1] = await RC.fetchRouteSegment(this.stops[index - 1], this.stops[index], mode, this.stadiaApiKey);
+
+        // Update just this segment's geometry for efficiency
+        const start = this.stops[index - 1];
+        const end = this.stops[index];
+        const coords = await RC.fetchRouteSegment(start, end, mode, this.stadiaApiKey);
+
+        // Replace in array (triggering reactivity if needed, though we call syncMapData)
+        this.routeGeometries[index - 1] = coords;
         this.syncMapData();
         this.saveState();
       },
