@@ -46,16 +46,16 @@ window.RouteCraft = window.RouteCraft || {};
     stops.forEach((stop, index) => {
       const markerEl = document.createElement("div");
       markerEl.className = "custom-marker";
-      
+
       const color = routeColors[index % routeColors.length];
-      
+
       // High-Contrast Solid Styling
       markerEl.style.backgroundColor = color;
       markerEl.style.color = "#ffffff";
       markerEl.style.borderColor = "#ffffff";
       markerEl.style.borderStyle = 'solid';
       markerEl.style.borderWidth = '2px';
-      
+
       // Inject the number
       markerEl.innerText = index + 1;
 
@@ -101,19 +101,6 @@ window.RouteCraft = window.RouteCraft || {};
       map.getSource("trip-route").setData(data);
     }
 
-    if (!map.getLayer("trip-route-glow")) {
-      map.addLayer({
-        id: "trip-route-glow",
-        type: "line",
-        source: "trip-route",
-        paint: {
-          "line-color": ["get", "color"],
-          "line-width": 7,
-          "line-opacity": 0.35
-        }
-      });
-    }
-
     if (!map.getLayer("trip-route-line")) {
       map.addLayer({
         id: "trip-route-line",
@@ -122,7 +109,7 @@ window.RouteCraft = window.RouteCraft || {};
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
           "line-color": ["get", "color"],
-          "line-width": 3.5
+          "line-width": 7
         }
       });
     }
