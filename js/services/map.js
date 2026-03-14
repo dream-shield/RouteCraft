@@ -65,58 +65,33 @@ window.RouteCraft = window.RouteCraft || {};
     return markers;
   };
 
-  function hexToRgb(hex) {
-    const clean = hex.replace("#", "");
-    const bigint = parseInt(clean, 16);
-    return { r: (bigint >> 16) & 255, g: (bigint >> 8) & 255, b: bigint & 255 };
-  }
-
-  function rgbToHex({ r, g, b }) {
-    const toHex = (v) => v.toString(16).padStart(2, "0");
-    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
-  }
-
-  function lerp(a, b, t) { return a + (b - a) * t; }
-
-  function mixColor(colorA, colorB, t) {
-    const a = hexToRgb(colorA);
-    const b = hexToRgb(colorB);
-    return rgbToHex({
-      r: Math.round(lerp(a.r, b.r, t)),
-      g: Math.round(lerp(a.g, b.g, t)),
-      b: Math.round(lerp(a.b, b.b, t))
-    });
-  }
-
+  /**
+   * Refreshes the route layer using a performant "one-feature-per-leg" approach.
+   * This replaces the heavy thousands-of-segments approach.
+   */
   window.RouteCraft.refreshRouteLayer = function refreshRouteLayer(map, stops, routeColors, routeGeometries = []) {
-    const segments = [];
+    const features = [];
 
     for (let i = 0; i < stops.length - 1; i += 1) {
-      const colorStart = routeColors[i % routeColors.length];
-      const colorEnd = routeColors[(i + 1) % routeColors.length];
-
+      const color = routeColors[i % routeColors.length];
+      
+      // Use provided high-fidelity geometry or fallback to a straight line
       const coords = routeGeometries[i] || [
         [stops[i].longitude, stops[i].latitude],
         [stops[i + 1].longitude, stops[i + 1].latitude]
       ];
 
-      const steps = coords.length - 1;
-      for (let s = 0; s < steps; s += 1) {
-        const t0 = s / steps;
-        const t1 = (s + 1) / steps;
-        const segmentColor = mixColor(colorStart, colorEnd, (t0 + t1) / 2);
-
-        segments.push({
-          type: "Feature",
-          properties: { color: segmentColor },
-          geometry: {
-            type: "LineString",
-            coordinates: [coords[s], coords[s+1]]
-          }
-        });
-      }
+      features.push({
+        type: "Feature",
+        properties: { color: color },
+        geometry: {
+          type: "LineString",
+          coordinates: coords
+        }
+      });
     }
-    const data = { type: "FeatureCollection", features: segments };
+
+    const data = { type: "FeatureCollection", features };
 
     if (!map.getSource("trip-route")) {
       map.addSource("trip-route", { type: "geojson", data });
@@ -124,22 +99,34 @@ window.RouteCraft = window.RouteCraft || {};
       map.getSource("trip-route").setData(data);
     }
 
+    // Glow Layer (Background shadow for the line)
     if (!map.getLayer("trip-route-glow")) {
       map.addLayer({
         id: "trip-route-glow",
         type: "line",
         source: "trip-route",
-        paint: { "line-color": ["get", "color"], "line-width": 7, "line-opacity": 0.35 }
+        paint: {
+          "line-color": ["get", "color"],
+          "line-width": 7,
+          "line-opacity": 0.35
+        }
       });
     }
 
+    // Main Route Line Layer
     if (!map.getLayer("trip-route-line")) {
       map.addLayer({
         id: "trip-route-line",
         type: "line",
         source: "trip-route",
-        layout: { "line-cap": "round", "line-join": "round" },
-        paint: { "line-color": ["get", "color"], "line-width": 3.2 }
+        layout: { 
+          "line-cap": "round", 
+          "line-join": "round" 
+        },
+        paint: {
+          "line-color": ["get", "color"],
+          "line-width": 3.5
+        }
       });
     }
   };

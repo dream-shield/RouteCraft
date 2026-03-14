@@ -62,16 +62,16 @@
         try {
           const sanitized = ItineraryService.sanitizeStops(payload?.stops);
           if (!sanitized.length) return false;
-          
+
           const result = ItineraryService.updateStopIdsAndNextId(sanitized);
           this.stops = result.stops;
           this.nextId = result.nextId;
-          
+
           this.activeIndex = Math.min(
             Math.max(Number(payload.activeIndex) || 0, 0),
             this.stops.length - 1
           );
-          
+
           if (this.mapLoaded) {
             this.syncMapData();
             if (this.activeIndex >= 0) {
@@ -131,11 +131,11 @@
           const text = await file.text();
           const placemarks = RC.parseKml(text);
           if (!placemarks) return alert("No valid stops found in KML.");
-          
+
           const result = ItineraryService.updateStopIdsAndNextId(placemarks);
           this.stops = result.stops;
           this.nextId = result.nextId;
-          
+
           this.activeIndex = 0;
           this.syncMapData();
           this.flyToStop(0, false);
@@ -244,11 +244,11 @@
       saveEdit() {
         const idx = this.stops.findIndex(s => s.id === this.editingStopId);
         if (idx === -1) return;
-        this.stops[idx] = { 
-          ...this.stops[idx], 
-          ...this.editForm, 
-          title: this.editForm.title.trim(), 
-          zoomLevel: RC.clampZoom(this.editForm.zoomLevel) 
+        this.stops[idx] = {
+          ...this.stops[idx],
+          ...this.editForm,
+          title: this.editForm.title.trim(),
+          zoomLevel: RC.clampZoom(this.editForm.zoomLevel)
         };
         this.editingStopId = null;
         this.syncMapData();
@@ -282,7 +282,7 @@
             if (this.activeIndex === oldIdx) this.activeIndex = newIdx;
             else if (oldIdx < this.activeIndex && newIdx >= this.activeIndex) this.activeIndex--;
             else if (oldIdx > this.activeIndex && newIdx <= this.activeIndex) this.activeIndex++;
-            
+
             this.syncMapData();
             if (this.activeIndex >= 0) this.flyToStop(this.activeIndex, false);
           }
@@ -298,7 +298,7 @@
     mounted() {
       const urlPayload = RC.getHashData();
       const localPayload = RC.getFromLocalStorage();
-      
+
       const urlValid = ItineraryService.sanitizeStops(urlPayload?.stops).length > 0;
       const localValid = ItineraryService.sanitizeStops(localPayload?.stops).length > 0;
 
