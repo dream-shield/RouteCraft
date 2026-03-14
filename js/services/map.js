@@ -1,6 +1,15 @@
+/**
+ * @fileoverview Service for MapLibre GL JS integration.
+ * Manages map initialization, markers, routes, and transitions.
+ */
+
 window.RouteCraft = window.RouteCraft || {};
 
 (function mapModule() {
+  /**
+   * Internal helper to generate a basic OSM raster style for the map.
+   * @returns {Object} A MapLibre-compatible style object.
+   */
   function getStyle() {
     return {
       version: 8,
@@ -23,6 +32,13 @@ window.RouteCraft = window.RouteCraft || {};
     };
   }
 
+  /**
+   * Initializes the MapLibre map instance.
+   * @param {Object} maplibregl - The MapLibre GL JS library.
+   * @param {string} containerId - The ID of the HTML element to host the map.
+   * @param {Stop} firstStop - The initial stop to center the map on.
+   * @returns {Object} The created MapLibre Map instance.
+   */
   window.RouteCraft.createMap = function createMap(maplibregl, containerId, firstStop) {
     const map = new maplibregl.Map({
       container: containerId,
@@ -39,6 +55,16 @@ window.RouteCraft = window.RouteCraft || {};
     return map;
   };
 
+  /**
+   * Clears old markers and renders new ones for all stops.
+   * @param {Object} maplibregl - The MapLibre GL JS library.
+   * @param {Object} map - The current map instance.
+   * @param {Stop[]} stops - The itinerary stops to render as markers.
+   * @param {Object[]} existingMarkers - The current array of rendered markers (to be cleared).
+   * @param {number} activeIndex - The index of the currently active stop.
+   * @param {string[]} routeColors - Array of hex colors for markers and segments.
+   * @returns {Object[]} The new array of MapLibre Marker instances.
+   */
   window.RouteCraft.renderMarkers = function renderMarkers(maplibregl, map, stops, existingMarkers, activeIndex, routeColors) {
     existingMarkers.forEach((marker) => marker.remove());
     const markers = [];
@@ -76,6 +102,13 @@ window.RouteCraft = window.RouteCraft || {};
     return markers;
   };
 
+  /**
+   * Updates the GeoJSON source and layer that displays the itinerary route.
+   * @param {Object} map - The map instance.
+   * @param {Stop[]} stops - The itinerary stops.
+   * @param {string[]} routeColors - Array of colors for route segments.
+   * @param {number[][][]} [routeGeometries] - Custom geometries for the route segments.
+   */
   window.RouteCraft.refreshRouteLayer = function refreshRouteLayer(map, stops, routeColors, routeGeometries = []) {
     const features = [];
 
@@ -115,6 +148,11 @@ window.RouteCraft = window.RouteCraft || {};
     }
   };
 
+  /**
+   * Smoothly pans and zooms the map to focus on a specific stop.
+   * @param {Object} map - The map instance.
+   * @param {Stop} stop - The target stop to fly to.
+   */
   window.RouteCraft.flyToStop = function flyToStop(map, stop) {
     map.flyTo({
       center: [stop.longitude, stop.latitude],
