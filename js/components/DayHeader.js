@@ -17,7 +17,8 @@
       'toggle-collapse',
       'select-day',
       'update-day',
-      'delete-day'
+      'delete-day',
+      'toggle-add-menu'
     ],
     methods: {
       /**
