@@ -65,7 +65,9 @@
       /** Handles the decision to use data loaded from the URL. */
       chooseUrlData() {
         if (this.pendingUrlData) {
-          this.store.loadPayload(this.pendingUrlData);
+          if (this.store.loadPayload(this.pendingUrlData)) {
+            this.flyToStop(this.activeIndex, false);
+          }
         }
         this.sourcePromptOpen = false;
       },
@@ -73,7 +75,9 @@
       /** Handles the decision to use data loaded from LocalStorage. */
       chooseLocalData() {
         if (this.pendingLocalData) {
-          this.store.loadPayload(this.pendingLocalData);
+          if (this.store.loadPayload(this.pendingLocalData)) {
+            this.flyToStop(this.activeIndex, false);
+          }
         }
         this.sourcePromptOpen = false;
       },
@@ -284,9 +288,13 @@
         this.pendingLocalData = localPayload;
         this.sourcePromptOpen = true;
       } else if (urlValid) {
-        this.store.loadPayload(urlPayload);
+        if (this.store.loadPayload(urlPayload)) {
+          this.flyToStop(this.activeIndex, false);
+        }
       } else if (localValid) {
-        this.store.loadPayload(localPayload);
+        if (this.store.loadPayload(localPayload)) {
+          this.flyToStop(this.activeIndex, false);
+        }
       }
 
       this.initMap();
