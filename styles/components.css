@@ -1,19 +1,13 @@
-.drag-handle {
-  cursor: grab;
-  user-select: none;
-  touch-action: none;
-}
-
-.drag-handle:active {
-  cursor: grabbing;
-}
-
 /* Stop Card Hover Effects */
 article.relative.rounded-2xl.border.bg-white {
-  cursor: pointer;
+  cursor: grab;
   transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), 
               box-shadow 0.2s ease, 
               border-color 0.2s ease;
+}
+
+article.relative.rounded-2xl.border.bg-white:active {
+  cursor: grabbing;
 }
 
 article.relative.rounded-2xl.border.bg-white:hover {
