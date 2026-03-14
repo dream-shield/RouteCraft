@@ -100,6 +100,10 @@ window.RouteCraft = window.RouteCraft || {};
         .setPopup(new maplibregl.Popup({ offset: 18 }).setHTML(`<strong>${stop.title}</strong>`))
         .addTo(map);
 
+      if (stop.id === activeStopId) {
+        marker.togglePopup();
+      }
+
       markers.push(marker);
     });
 

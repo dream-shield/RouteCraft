@@ -8,6 +8,30 @@
   cursor: grabbing;
 }
 
+/* Stop Card Hover Effects */
+article.relative.rounded-2xl.border.bg-white {
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), 
+              box-shadow 0.2s ease, 
+              border-color 0.2s ease;
+}
+
+article.relative.rounded-2xl.border.bg-white:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  border-color: #bfdbfe; /* blue-200 */
+}
+
+article.relative.rounded-2xl.border.bg-white.border-blue-300 {
+  background-color: #f8faff; /* Very light blue tint */
+  box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.15), 0 4px 6px -2px rgba(37, 99, 235, 0.1);
+}
+
+article.relative.rounded-2xl.border.bg-white.border-blue-300:hover {
+  border-color: #60a5fa; /* blue-400 on hover when active */
+  background-color: #f0f7ff;
+}
+
 .sortable-chosen {
   opacity: 0.2 !important;
 }
