@@ -3,32 +3,46 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Travel Itinerary Map</title>
+  <title>RouteCraft - Interactive Trip Planner</title>
 
+  <!-- External Dependencies -->
+  <!-- MapLibre GL JS: Core mapping library -->
   <link href="https://unpkg.com/maplibre-gl@5.1.0/dist/maplibre-gl.css" rel="stylesheet" />
+  <!-- Google Fonts: Icons and Typography -->
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&display=swap" rel="stylesheet" />
+  <!-- Tailwind CSS: Utility-first styling framework -->
   <script src="https://cdn.tailwindcss.com"></script>
 
+  <!-- Local Styles -->
   <link rel="stylesheet" href="styles/base.css" />
   <link rel="stylesheet" href="styles/components.css" />
   <link rel="stylesheet" href="styles/map.css" />
 </head>
 <body class="bg-slate-100 text-slate-800">
+  <!-- Vue Application Root -->
   <div id="app" class="h-full">
+    <!-- Main Layout Grid: Sidebar (Stop List) and Aside (Map) -->
     <div class="grid h-full md:grid-cols-[40%_60%]">
+      
+      <!-- MAP SECTION -->
       <aside class="relative order-1 md:order-2 h-full">
         <div id="map" class="relative h-[54vh] w-full md:fixed md:right-0 md:top-0 md:h-full md:w-[60%]"></div>
       </aside>
+
+      <!-- SIDEBAR SECTION -->
       <section class="relative z-20 order-2 md:order-1 h-full overflow-y-auto border-r border-slate-200 bg-slate-50 md:bg-gradient-to-b md:from-slate-50 md:to-slate-100 p-4 pt-4 pb-32 overscroll-contain">
         <div class="mx-auto max-w-2xl">
           <div class="rounded-2xl border border-slate-200 bg-white/90 p-3 shadow-sm md:border-0 md:bg-transparent md:p-0 md:shadow-none">
+          
+          <!-- Component: Data Source Conflict Prompt -->
           <source-prompt
             :show="sourcePromptOpen"
             @choose-url="chooseUrlData"
             @choose-local="chooseLocalData"
           ></source-prompt>
 
+          <!-- Header Section -->
           <header class="mb-4">
             <div class="flex items-center gap-3">
               <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-sm">
@@ -41,8 +55,10 @@
             </div>
           </header>
 
+          <!-- Main Controls Sticky Bar -->
           <div class="sticky top-2 z-30 mb-4 rounded-xl border border-slate-200 bg-white/90 p-3 shadow-sm backdrop-blur add-stop-menu">
             <div class="mb-2 flex flex-wrap gap-2">
+              <!-- Action Buttons: Share, Export, Import -->
               <button
                 type="button"
                 class="rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold hover:bg-slate-50"
@@ -70,6 +86,8 @@
               >
                 <span class="material-symbols-outlined text-base leading-none">upload</span>
               </button>
+              
+              <!-- Navigation Controls -->
               <button
                 type="button"
                 class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
@@ -86,6 +104,8 @@
               >
                 Next
               </button>
+              
+              <!-- Add Stop Toggle -->
               <button
                 type="button"
                 class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white hover:bg-blue-700"
@@ -96,6 +116,8 @@
                 <span class="material-symbols-outlined text-base leading-none">add_circle</span>
               </button>
             </div>
+            
+            <!-- Hidden Input for KML Import -->
             <input
               ref="kmlFileInput"
               type="file"
@@ -104,6 +126,7 @@
               @change="importKmlFile"
             />
 
+            <!-- Component: Add Destination Menu -->
             <add-stop-menu
               :open="addMenuOpen"
               @add-stop="onComponentAddStop"
@@ -111,7 +134,9 @@
             ></add-stop-menu>
           </div>
 
+          <!-- Itinerary List (Sortable) -->
           <div ref="cardsList" class="space-y-3">
+            <!-- Component: Individual Stop Card -->
             <stop-card
               v-for="(stop, index) in stops"
               :key="stop.id"
@@ -143,6 +168,9 @@
     </div>
   </div>
 
+  <!-- VUE TEMPLATES (Used by components in js/components/) -->
+
+  <!-- Template for SourcePrompt.js -->
   <script type="text/x-template" id="source-prompt-template">
     <div
       v-if="show"
@@ -171,6 +199,7 @@
     </div>
   </script>
 
+  <!-- Template for AddStopMenu.js -->
   <script type="text/x-template" id="add-stop-menu-template">
     <div v-if="open" class="space-y-2">
       <div class="relative autocomplete-add">
@@ -220,6 +249,7 @@
     </div>
   </script>
 
+  <!-- Template for StopCard.js -->
   <script type="text/x-template" id="stop-card-template">
     <article
       :id="'card-' + stop.id"
@@ -338,22 +368,30 @@
     </article>
   </script>
 
+  <!-- Vendor Scripts -->
   <script src="https://unpkg.com/maplibre-gl@5.1.0/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
 
+  <!-- RouteCraft Core & Utils -->
   <script src="js/core/utils.js"></script>
   <script src="js/core/state.js"></script>
+  
+  <!-- RouteCraft Services -->
   <script src="js/services/storage.js"></script>
   <script src="js/services/kml.js"></script>
   <script src="js/services/itinerary.js"></script>
   <script src="js/services/search.js"></script>
   <script src="js/services/routing.js"></script>
   <script src="js/services/map.js"></script>
+  
+  <!-- RouteCraft Components -->
   <script src="js/components/StopCard.js"></script>
   <script src="js/components/AddStopMenu.js"></script>
   <script src="js/components/SourcePrompt.js"></script>
+  
+  <!-- App Initialization -->
   <script src="js/app.js"></script>
 </body>
 </html>
