@@ -13,7 +13,7 @@
     components: {
       'stop-card': window.StopCard,
       'add-stop-menu': window.AddStopMenu,
-      'source-prompt': window.SourcePrompt
+      'local-data-toast': window.LocalDataToast
     },
     data() {
       return {
@@ -41,8 +41,8 @@
         /** @type {Object} State of the edit form */
         editForm: RC.createEmptyForm(),
 
-        /** @type {boolean} Visibility of the data source prompt modal */
-        sourcePromptOpen: false,
+        /** @type {boolean} Visibility of the local data toast */
+        showLocalDataToast: false,
         /** @type {ItineraryPayload|null} Data found in the URL hash */
         pendingUrlData: null,
         /** @type {ItineraryPayload|null} Data found in LocalStorage */
@@ -62,24 +62,20 @@
     },
 
     methods: {
-      /** Handles the decision to use data loaded from the URL. */
-      chooseUrlData() {
-        if (this.pendingUrlData) {
-          if (this.store.loadPayload(this.pendingUrlData)) {
-            this.flyToStop(this.activeIndex, false);
-          }
-        }
-        this.sourcePromptOpen = false;
-      },
-
-      /** Handles the decision to use data loaded from LocalStorage. */
-      chooseLocalData() {
+      /** Restores data from LocalStorage when the user clicks the toast action. */
+      restoreLocalData() {
         if (this.pendingLocalData) {
           if (this.store.loadPayload(this.pendingLocalData)) {
             this.flyToStop(this.activeIndex, false);
           }
         }
-        this.sourcePromptOpen = false;
+        this.showLocalDataToast = false;
+      },
+
+      /** Dismisses the local data toast. */
+      dismissLocalData() {
+        this.showLocalDataToast = false;
+        this.pendingLocalData = null;
       },
 
       /** Copies a shareable link (URL with encoded hash) to the clipboard. */
@@ -286,15 +282,18 @@
       const urlValid = RC.ItineraryService.sanitizeStops(urlPayload?.stops).length > 0;
       const localValid = RC.ItineraryService.sanitizeStops(localPayload?.stops).length > 0;
 
-      if (urlValid && localValid) {
-        this.pendingUrlData = urlPayload;
-        this.pendingLocalData = localPayload;
-        this.sourcePromptOpen = true;
-      } else if (urlValid) {
+      if (urlValid) {
+        // Priority 1: Load from URL
         if (this.store.loadPayload(urlPayload)) {
           this.flyToStop(this.activeIndex, false);
         }
+        // If local data also exists, offer to restore it via toast
+        if (localValid) {
+          this.pendingLocalData = localPayload;
+          this.showLocalDataToast = true;
+        }
       } else if (localValid) {
+        // Priority 2: Load from LocalStorage if no URL data
         if (this.store.loadPayload(localPayload)) {
           this.flyToStop(this.activeIndex, false);
         }
