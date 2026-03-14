@@ -1,6 +1,6 @@
 # RouteCraft
 
-RouteCraft is a browser-based travel itinerary planner that lets you search destinations, build and reorder stops on an interactive map, and export your trip data for sharing.
+RouteCraft is a browser-based travel itinerary planner that lets you search places, build and reorder stops on an interactive map, and export your trip data for sharing.
 
 ## Features
 
@@ -16,7 +16,7 @@ RouteCraft is a browser-based travel itinerary planner that lets you search dest
 
 ## How It Works
 
-- Use the `+` button to add a destination.
+- Use the `+` button to add a place.
 - Search a place, enter a title, optional description, and zoom level.
 - Drag stops using the handle to reorder the itinerary.
 - The map animates to the active stop and updates the route line.

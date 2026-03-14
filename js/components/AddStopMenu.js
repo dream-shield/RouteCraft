@@ -1,5 +1,5 @@
 /**
- * @fileoverview Vue component for the "Add Destination" dropdown menu.
+ * @fileoverview Vue component for the "Add Place" dropdown menu.
  * Uses the PlaceSearch component to handle location searching.
  */
 

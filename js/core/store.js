@@ -21,17 +21,19 @@
    * @property {Stop[]} stops - Array of itinerary stops.
    * @property {Day[]} days - Array of itinerary days.
    * @property {string|null} activeDayId - ID of the currently active/focused day.
-   * @property {number} nextId - Next unique ID for a new stop.
    * @property {number} activeIndex - Index of the currently active/focused stop.
+   * @property {string|number|null} editingStopId - ID of the stop currently being edited.
+   * @property {Object} editForm - Temporary state for the edit form.
    */
 
   /** @type {ItineraryStore} */
   const store = reactive({
-    stops: structuredClone(RC.initialStops),
+    stops: [],
     days: [],
     activeDayId: null,
-    nextId: RC.initialStops.length + 1,
     activeIndex: 0,
+    editingStopId: null,
+    editForm: RC.createEmptyForm(),
 
     /**
      * Returns the days sorted by date.
@@ -42,13 +44,22 @@
     },
 
     /**
+     * Returns all stops for the currently active day.
+     * @returns {Stop[]}
+     */
+    get stopsForActiveDay() {
+      if (!this.activeDayId) return this.stops;
+      return this.stops.filter(s => s.dayId === this.activeDayId);
+    },
+
+    /**
      * Adds a new stop to the itinerary.
      * @param {Object} formData - Data for the new stop.
      */
     addStop(formData) {
       const dayId = formData.dayId || this.activeDayId || (this.days[0] && this.days[0].id);
-      this.stops = ItineraryService.addStop(this.stops, { ...formData, dayId }, this.nextId);
-      this.nextId++;
+      const stopId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      this.stops = ItineraryService.addStop(this.stops, { ...formData, id: stopId, dayId }, stopId);
       this.activeIndex = this.stops.length - 1;
     },
 
@@ -142,9 +153,7 @@
       const sanitizedStops = ItineraryService.sanitizeStops(migrated.stops);
       if (!sanitizedStops.length) return false;
 
-      const result = ItineraryService.updateStopIdsAndNextId(sanitizedStops);
-      this.stops = result.stops;
-      this.nextId = result.nextId;
+      this.stops = sanitizedStops;
       this.days = migrated.days || [];
       this.activeDayId = migrated.activeDayId || (this.days[0] && this.days[0].id) || null;
       

@@ -50,7 +50,7 @@
               </div>
               <div>
                 <h1 class="text-2xl font-bold tracking-tight text-slate-900">RouteCraft</h1>
-                <p class="rc-subtitle text-sm text-slate-600">Plan, reorder, and share trips on an interactive map.</p>
+                <p class="rc-subtitle text-sm text-slate-600">Plan and share trips on an interactive map.</p>
               </div>
             </div>
           </header>
@@ -141,7 +141,7 @@
                 @toggle-add-menu="toggleAddMenuForDay(day.id)"
               ></day-header>
 
-              <!-- Add Destination Menu (Specific to this day) -->
+              <!-- Add Place Menu (Specific to this day) -->
               <div v-if="addMenuOpen && activeAddDayId === day.id" class="px-4 py-2 bg-slate-50 rounded-xl border border-blue-100 shadow-inner add-stop-menu">
                 <add-stop-menu
                   :open="true"
@@ -166,16 +166,20 @@
                   :editing-stop-id="editingStopId"
                   :edit-form="editForm"
                   :route-colors="routeColors"
-                  @fly-to-stop="() => flyToStopById(stop.id)"
-                  @set-segment-mode="(idx, mode) => setSegmentModeByStopId(stop.id, mode)"
+                  @fly-to-stop="() => flyToStop(stop.id)"
+                  @set-segment-mode="(mode) => setSegmentMode(stop.id, mode)"
                   @start-edit="startEdit"
-                  @delete-stop="() => deleteStopById(stop.id)"
+                  @delete-stop="() => deleteStop(stop.id)"
                   @save-edit="saveEdit"
                   @cancel-edit="cancelEdit"
                   @select-edit-suggestion="selectEditSuggestion"
                 ></place-card>
                 
-                <div v-if="getStopsForDay(day.id).length === 0" class="py-4 text-center text-sm text-slate-400 italic">
+                <div 
+                  v-if="getStopsForDay(day.id).length === 0" 
+                  class="py-4 text-center text-sm text-slate-400 italic rc-exclude-drag"
+                  draggable="false"
+                >
                   No stops for this day.
                 </div>
               </div>
@@ -358,7 +362,7 @@
           :disabled="!canAddStop"
           @click="addStop"
         >
-          Add Stop
+          Add Place
         </button>
       </div>
     </div>
@@ -381,7 +385,7 @@
             type="button"
             class="flex h-7 w-7 items-center justify-center rounded-full transition-colors hover:bg-slate-100"
             :class="stop.transportMode === mode ? 'bg-blue-100 text-blue-600' : 'text-slate-400'"
-            @click.stop="$emit('set-segment-mode', index, mode)"
+            @click.stop="$emit('set-segment-mode', mode)"
             :title="mode.charAt(0).toUpperCase() + mode.slice(1)"
           >
             <span class="material-symbols-outlined text-base">

@@ -15,43 +15,26 @@ window.RouteCraft = window.RouteCraft || {};
    */
   function sanitizeStops(rawStops) {
     if (!Array.isArray(rawStops)) return [];
-    return rawStops
-      .map((stop) => ({
-        id: Number.isFinite(Number(stop.id)) ? Number(stop.id) : null,
-        dayId: stop.dayId || null,
-        title: String(stop.title || "").trim(),
-        description: String(stop.description || "").trim(),
-        longitude: Number(stop.longitude),
-        latitude: Number(stop.latitude),
-        zoomLevel: RC.clampZoom(stop.zoomLevel),
-        searchQuery: String(stop.searchQuery || stop.title || "").trim(),
-        transportMode: stop.transportMode || "auto"
-      }))
-      .filter((stop) => stop.title && Number.isFinite(stop.longitude) && Number.isFinite(stop.latitude));
-  }
-
-  /**
-   * Updates stop IDs based on their current array index and ensures
-   * the first stop of each day (or the first stop overall in legacy mode) has no transport mode.
-   * @param {Stop[]} stops - The array of stops to update.
-   * @returns {{stops: Stop[], nextId: number}} The updated stops and the next available ID.
-   */
-  function updateStopIdsAndNextId(stops) {
+    
     const seenDayIds = new Set();
-    const updated = stops.map((stop, idx) => {
-      const isFirstInDay = !stop.dayId || !seenDayIds.has(stop.dayId);
-      if (stop.dayId) seenDayIds.add(stop.dayId);
-      
-      return {
-        ...stop,
-        id: idx + 1,
-        transportMode: isFirstInDay ? null : (stop.transportMode || "auto")
-      };
-    });
-    return {
-      stops: updated,
-      nextId: updated.length + 1
-    };
+    return rawStops
+      .map((stop) => {
+        const isFirstInDay = !stop.dayId || !seenDayIds.has(stop.dayId);
+        if (stop.dayId) seenDayIds.add(stop.dayId);
+
+        return {
+          id: stop.id || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          dayId: stop.dayId || null,
+          title: String(stop.title || "").trim(),
+          description: String(stop.description || "").trim(),
+          longitude: Number(stop.longitude),
+          latitude: Number(stop.latitude),
+          zoomLevel: RC.clampZoom(stop.zoomLevel),
+          searchQuery: String(stop.searchQuery || stop.title || "").trim(),
+          transportMode: isFirstInDay ? null : (stop.transportMode || "auto")
+        };
+      })
+      .filter((stop) => stop.title && Number.isFinite(stop.longitude) && Number.isFinite(stop.latitude));
   }
 
   /**
@@ -127,13 +110,13 @@ window.RouteCraft = window.RouteCraft || {};
    * Logic for adding a new stop to the itinerary.
    * @param {Stop[]} stops - Current array of stops.
    * @param {Object} formData - New stop data from the UI.
-   * @param {number} nextId - The ID to assign to the new stop.
+   * @param {string|number} stopId - The stable ID to assign to the new stop.
    * @returns {Stop[]} A new array containing all previous stops plus the new one.
    */
-  function addStop(stops, formData, nextId) {
+  function addStop(stops, formData, stopId) {
     const newStop = {
-      id: nextId,
       ...formData,
+      id: stopId,
       title: formData.title.trim(),
       zoomLevel: RC.clampZoom(formData.zoomLevel),
       dayId: formData.dayId || null
@@ -172,7 +155,6 @@ window.RouteCraft = window.RouteCraft || {};
    */
   window.RouteCraft.ItineraryService = {
     sanitizeStops,
-    updateStopIdsAndNextId,
     addStop,
     deleteStop,
     reorderStops,
