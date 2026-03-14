@@ -156,7 +156,7 @@
                 :data-day-id="day.id"
                 class="day-stops-list space-y-3 pl-4 border-l-2 border-slate-200 ml-5"
               >
-                <stop-card
+                <place-card
                   v-for="(stop, index) in getStopsForDay(day.id)"
                   :key="stop.id"
                   :stop="stop"
@@ -173,7 +173,7 @@
                   @save-edit="saveEdit"
                   @cancel-edit="cancelEdit"
                   @select-edit-suggestion="selectEditSuggestion"
-                ></stop-card>
+                ></place-card>
                 
                 <div v-if="getStopsForDay(day.id).length === 0" class="py-4 text-center text-sm text-slate-400 italic">
                   No stops for this day.
@@ -364,8 +364,8 @@
     </div>
   </script>
 
-  <!-- Template for StopCard.js -->
-  <script type="text/x-template" id="stop-card-template">
+  <!-- Template for PlaceCard.js -->
+  <script type="text/x-template" id="place-card-template">
     <article
       :id="'card-' + stop.id"
       class="relative flex items-center gap-4 rounded-2xl border bg-white p-4 shadow transition"
@@ -475,7 +475,7 @@
   <!-- RouteCraft Components -->
   <script src="js/components/PlaceSearch.js"></script>
   <script src="js/components/DayHeader.js"></script>
-  <script src="js/components/StopCard.js"></script>
+  <script src="js/components/PlaceCard.js"></script>
   <script src="js/components/AddStopMenu.js"></script>
   <script src="js/components/LocalDataToast.js"></script>
   

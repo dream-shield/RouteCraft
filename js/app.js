@@ -11,7 +11,7 @@
 
   createApp({
     components: {
-      'stop-card': window.StopCard,
+      'place-card': window.PlaceCard,
       'day-header': window.DayHeader,
       'add-stop-menu': window.AddStopMenu,
       'local-data-toast': window.LocalDataToast

@@ -1,13 +1,13 @@
 /**
- * @fileoverview Vue component for displaying a stop card in the itinerary.
- * Supports viewing, editing, deleting, and reordering stops.
+ * @fileoverview Vue component for displaying a place card in the itinerary.
+ * Supports viewing, editing, deleting, and reordering places.
  */
 
-(function stopCardComponent() {
+(function placeCardComponent() {
   const RC = window.RouteCraft;
 
-  window.StopCard = {
-    template: '#stop-card-template',
+  window.PlaceCard = {
+    template: '#place-card-template',
     props: {
       /** @type {Stop} */
       stop: Object,
@@ -38,16 +38,16 @@
     ],
     methods: {
       /**
-       * Gets the color assigned to the route segment leading to this stop.
-       * @param {number} index - The index of the stop within its day.
+       * Gets the color assigned to the route segment leading to this place.
+       * @param {number} index - The index of the place within its day.
        * @returns {string} Hex color string.
        */
       getRouteColor(index) {
         return this.routeColors[index % this.routeColors.length];
       },
       /**
-       * Generates a style object for the stop number badge.
-       * @param {number} index - The index of the stop within its day.
+       * Generates a style object for the place number badge.
+       * @param {number} index - The index of the place within its day.
        * @returns {Object} CSS style object.
        */
       getBadgeStyle(index) {

@@ -37,7 +37,7 @@ The UI is built with **Vue.js 3** using the **Options API**.
 ### Components
 Components are defined in `js/components/` as plain JavaScript objects. They use X-Templates defined in `index.html` to separate markup from logic.
 
-- **`StopCard`**: Displays individual itinerary items and provides controls for editing/deleting.
+- **`PlaceCard`**: Displays individual itinerary items and provides controls for editing/deleting.
 - **`AddStopMenu`**: A dropdown/overlay for searching and adding new destinations.
 - **`SourcePrompt`**: A modal used to resolve data conflicts between local storage and URL parameters.
 
