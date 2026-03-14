@@ -1,6 +1,6 @@
 /**
  * @fileoverview Vue component for the "Add Place" dropdown menu.
- * Uses the PlaceSearch component to handle location searching.
+ * Uses the PlaceSearch component to handle location searching and ImportService for batch import.
  */
 
 (function addStopMenuComponent() {
@@ -18,8 +18,16 @@
     emits: ['add-stop', 'close'],
     data() {
       return {
-        /** @type {Object} New stop form data */
-        addForm: RC.createEmptyForm()
+        /** @type {'single'|'bulk'} Current active tab */
+        currentTab: 'single',
+        /** @type {Object} New stop form data for single add */
+        addForm: RC.createEmptyForm(),
+        /** @type {string} Raw text for bulk import */
+        bulkText: '',
+        /** @type {Object[]} List of detected and geocoded places */
+        detectedPlaces: [],
+        /** @type {boolean} Whether geocoding is in progress */
+        isGeocoding: false
       };
     },
     computed: {
@@ -34,6 +42,13 @@
           Number.isFinite(this.addForm.latitude) &&
           Number.isFinite(this.addForm.longitude)
         );
+      },
+      /**
+       * Checks if any detected places are selected for import.
+       * @returns {boolean}
+       */
+      hasSelectedPlaces() {
+        return this.detectedPlaces.some(p => p.selected && p.found);
       }
     },
     methods: {
@@ -57,6 +72,62 @@
         if (!this.canAddStop) return;
         this.$emit('add-stop', { ...this.addForm });
         this.addForm = RC.createEmptyForm();
+      },
+      /**
+       * Runs the bulk geocoding process using the ImportService.
+       */
+      async runBulkGeocode() {
+        if (!this.bulkText.trim() || this.isGeocoding) return;
+        
+        this.isGeocoding = true;
+        try {
+          const results = await RC.ImportService.process(this.bulkText);
+          this.detectedPlaces = results.map(r => ({
+            ...r,
+            selected: r.found // Default to selected if found
+          }));
+        } finally {
+          this.isGeocoding = false;
+        }
+      },
+      /**
+       * Adds all selected detected places to the itinerary.
+       */
+      addBulkStops() {
+        const selected = this.detectedPlaces.filter(p => p.selected && p.found);
+        selected.forEach(place => {
+          const newStop = RC.createEmptyForm();
+          newStop.title = place.title;
+          newStop.latitude = Number.parseFloat(place.lat);
+          newStop.longitude = Number.parseFloat(place.lon);
+          newStop.searchQuery = place.displayName;
+          this.$emit('add-stop', newStop);
+        });
+        
+        // Reset bulk import state
+        this.bulkText = '';
+        this.detectedPlaces = [];
+        this.currentTab = 'single';
+      },
+      /**
+       * Toggles the selection status of a detected place.
+       * @param {number} index - Index of the place in detectedPlaces.
+       */
+      togglePlaceSelection(index) {
+        this.detectedPlaces[index].selected = !this.detectedPlaces[index].selected;
+      }
+    },
+    watch: {
+      /**
+       * Reset state when the menu is closed.
+       */
+      open(isOpen) {
+        if (!isOpen) {
+          this.currentTab = 'single';
+          this.bulkText = '';
+          this.detectedPlaces = [];
+          this.addForm = RC.createEmptyForm();
+        }
       }
     }
   };

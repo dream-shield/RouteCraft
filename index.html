@@ -384,27 +384,110 @@
 
   <!-- Template for AddStopMenu.js -->
   <script type="text/x-template" id="add-stop-menu-template">
-    <div v-if="open" class="space-y-2">
-      <place-search
-        :value="addForm.query"
-        placeholder="Search place or address"
-        @input="val => addForm.query = val"
-        @select="selectAddSuggestion"
-      ></place-search>
-
-      <input v-model.trim="addForm.title" placeholder="Title" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-blue-500 focus:ring-2" />
-      <textarea v-model.trim="addForm.description" rows="2" placeholder="Description (optional)" class="w-full resize-y rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-blue-500 focus:ring-2"></textarea>
-
-      <div class="flex items-center gap-2">
-        <input v-model.number="addForm.zoomLevel" type="number" min="2" max="18" step="0.1" class="w-28 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-blue-500 focus:ring-2" />
+    <div v-if="open" class="space-y-3">
+      <!-- Tabs -->
+      <div class="flex border-b border-slate-200">
         <button
           type="button"
-          class="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-          :disabled="!canAddStop"
-          @click="addStop"
+          class="flex-1 px-3 py-2 text-xs font-semibold uppercase tracking-wider outline-none transition-colors"
+          :class="currentTab === 'single' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500 hover:text-slate-700'"
+          @click="currentTab = 'single'"
         >
-          Add Place
+          Single
         </button>
+        <button
+          type="button"
+          class="flex-1 px-3 py-2 text-xs font-semibold uppercase tracking-wider outline-none transition-colors"
+          :class="currentTab === 'bulk' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500 hover:text-slate-700'"
+          @click="currentTab = 'bulk'"
+        >
+          Bulk Import
+        </button>
+      </div>
+
+      <!-- Single Add Tab -->
+      <div v-if="currentTab === 'single'" class="space-y-2">
+        <place-search
+          :value="addForm.query"
+          placeholder="Search place or address"
+          @input="val => addForm.query = val"
+          @select="selectAddSuggestion"
+        ></place-search>
+
+        <input v-model.trim="addForm.title" placeholder="Title" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-blue-500 focus:ring-2" />
+        <textarea v-model.trim="addForm.description" rows="2" placeholder="Description (optional)" class="w-full resize-y rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-blue-500 focus:ring-2"></textarea>
+
+        <div class="flex items-center gap-2">
+          <input v-model.number="addForm.zoomLevel" type="number" min="2" max="18" step="0.1" class="w-28 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-blue-500 focus:ring-2" />
+          <button
+            type="button"
+            class="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            :disabled="!canAddStop"
+            @click="addStop"
+          >
+            Add Place
+          </button>
+        </div>
+      </div>
+
+      <!-- Bulk Import Tab -->
+      <div v-if="currentTab === 'bulk'" class="space-y-3">
+        <div v-if="detectedPlaces.length === 0" class="space-y-2">
+          <p class="text-xs text-slate-500">Paste a list of places (one per line):</p>
+          <textarea
+            v-model="bulkText"
+            rows="6"
+            placeholder="e.g.&#10;Ferry Building&#10;Golden Gate Bridge&#10;Ocean Beach"
+            class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-mono outline-none ring-blue-500 focus:ring-2"
+          ></textarea>
+          <button
+            type="button"
+            class="w-full rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            :disabled="!bulkText.trim() || isGeocoding"
+            @click="runBulkGeocode"
+          >
+            <span v-if="isGeocoding">Processing...</span>
+            <span v-else>Next</span>
+          </button>
+        </div>
+
+        <!-- Review Results -->
+        <div v-else class="space-y-3">
+          <div class="flex items-center justify-between">
+            <p class="text-xs font-semibold text-slate-600">Review Detected Places</p>
+            <button type="button" class="text-xs text-blue-600 hover:underline" @click="detectedPlaces = []; bulkText = ''">Back to edit</button>
+          </div>
+          
+          <div class="max-h-60 space-y-1 overflow-y-auto rounded-lg border border-slate-200 p-1">
+            <div
+              v-for="(place, idx) in detectedPlaces"
+              :key="idx"
+              class="flex items-start gap-2 rounded-md p-2 transition-colors hover:bg-slate-50"
+              :class="place.selected ? 'bg-blue-50/50' : 'opacity-60'"
+            >
+              <input
+                type="checkbox"
+                v-model="place.selected"
+                :disabled="!place.found"
+                class="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              <div class="flex-1 overflow-hidden" @click="place.found && togglePlaceSelection(idx)">
+                <p class="truncate text-sm font-medium" :class="place.found ? 'text-slate-900' : 'text-slate-400'">{{ place.title }}</p>
+                <p class="truncate text-[10px] text-slate-500">{{ place.displayName }}</p>
+              </div>
+              <span v-if="!place.found" class="text-[10px] font-semibold text-red-500">Not found</span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            class="w-full rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            :disabled="!hasSelectedPlaces"
+            @click="addBulkStops"
+          >
+            Add Selected Places
+          </button>
+        </div>
       </div>
     </div>
   </script>
@@ -511,6 +594,7 @@
   <script src="js/services/kml.js"></script>
   <script src="js/services/itinerary.js"></script>
   <script src="js/services/search.js"></script>
+  <script src="js/services/import.js"></script>
   <script src="js/services/routing.js"></script>
   <script src="js/services/map.js"></script>
 
