@@ -105,7 +105,7 @@
                 Next
               </button>
               
-              <!-- Add Day & Stop Toggles -->
+              <!-- Add Day Toggles -->
               <button
                 type="button"
                 class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100"
@@ -114,15 +114,6 @@
               >
                 <span class="material-symbols-outlined text-base leading-none">calendar_add_on</span>
                 <span>Day</span>
-              </button>
-              <button
-                type="button"
-                class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white hover:bg-blue-700"
-                @click="toggleAddMenu"
-                aria-label="Toggle add destination menu"
-                title="Add destination"
-              >
-                <span class="material-symbols-outlined text-base leading-none">add_circle</span>
               </button>
             </div>
             
@@ -134,13 +125,6 @@
               class="hidden"
               @change="importKmlFile"
             />
-
-            <!-- Component: Add Destination Menu -->
-            <add-stop-menu
-              :open="addMenuOpen"
-              @add-stop="onComponentAddStop"
-              @close="addMenuOpen = false"
-            ></add-stop-menu>
           </div>
 
           <!-- Itinerary List (Grouped by Day) -->
@@ -154,7 +138,17 @@
                 @select-day="store.activeDayId = day.id"
                 @update-day="data => store.updateDay(day.id, data)"
                 @delete-day="store.deleteDay(day.id)"
+                @toggle-add-menu="toggleAddMenuForDay(day.id)"
               ></day-header>
+
+              <!-- Add Destination Menu (Specific to this day) -->
+              <div v-if="addMenuOpen && activeAddDayId === day.id" class="px-4 py-2 bg-slate-50 rounded-xl border border-blue-100 shadow-inner add-stop-menu">
+                <add-stop-menu
+                  :open="true"
+                  @add-stop="onComponentAddStop"
+                  @close="closeAddMenu"
+                ></add-stop-menu>
+              </div>
 
               <!-- Day Stops (Sortable) -->
               <div 
@@ -244,14 +238,24 @@
           </div>
         </div>
 
-        <button 
-          type="button"
-          class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-300 opacity-0 group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-600 transition-all"
-          title="Delete Day"
-          @click.stop="$emit('delete-day')"
-        >
-          <span class="material-symbols-outlined text-lg">delete</span>
-        </button>
+        <div class="flex shrink-0 items-center gap-1">
+          <button 
+            type="button"
+            class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-300 hover:bg-blue-50 hover:text-blue-600 transition-all"
+            title="Add Stop to this Day"
+            @click.stop="$emit('toggle-add-menu')"
+          >
+            <span class="material-symbols-outlined text-lg">add_location</span>
+          </button>
+          <button 
+            type="button"
+            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-300 opacity-0 group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-600 transition-all"
+            title="Delete Day"
+            @click.stop="$emit('delete-day')"
+          >
+            <span class="material-symbols-outlined text-lg">delete</span>
+          </button>
+        </div>
       </div>
     </div>
   </script>

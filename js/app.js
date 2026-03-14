@@ -36,6 +36,8 @@
 
         /** @type {boolean} State of the Add Destination menu */
         addMenuOpen: false,
+        /** @type {string|null} ID of the day currently being added to */
+        activeAddDayId: null,
 
         /** @type {number|null} ID of the stop currently being edited */
         editingStopId: null,
@@ -211,9 +213,26 @@
       /** Navigates to the next stop in the itinerary. */
       goNext() { if (this.activeIndex < this.stops.length - 1) this.flyToStop(this.activeIndex + 1); },
 
-      /** Toggles the visibility of the Add Destination menu. */
-      toggleAddMenu() {
-        this.addMenuOpen = !this.addMenuOpen;
+      /** Toggles the visibility of the Add Destination menu for a specific day. */
+      toggleAddMenuForDay(dayId) {
+        const isCurrentlyOpenForThisDay = this.addMenuOpen && this.activeAddDayId === dayId;
+        
+        if (isCurrentlyOpenForThisDay) {
+          this.closeAddMenu();
+        } else {
+          // Ensure the day is expanded and active
+          this.store.updateDay(dayId, { isCollapsed: false });
+          this.store.activeDayId = dayId;
+          
+          this.activeAddDayId = dayId;
+          this.addMenuOpen = true;
+        }
+      },
+
+      /** Closes the add menu and resets state. */
+      closeAddMenu() {
+        this.addMenuOpen = false;
+        this.activeAddDayId = null;
       },
 
       /**
@@ -221,10 +240,14 @@
        * @param {Object} formData - Data for the new stop.
        */
       onComponentAddStop(formData) {
+        // Ensure the stop is added to the day where the button was clicked
+        if (this.activeAddDayId) {
+          formData.dayId = this.activeAddDayId;
+        }
         this.store.addStop(formData);
         this.syncMapData();
         this.flyToStop(this.stops.length - 1);
-        this.addMenuOpen = false;
+        this.closeAddMenu();
       },
 
       /**
