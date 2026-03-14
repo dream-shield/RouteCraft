@@ -15,6 +15,8 @@
       index: Number,
       /** @type {number} */
       activeIndex: Number,
+      /** @type {boolean} */
+      isGloballyActive: Boolean,
       /** @type {number|string} */
       editingStopId: [Number, String],
       /** @type {Object} */
@@ -37,7 +39,7 @@
     methods: {
       /**
        * Gets the color assigned to the route segment leading to this stop.
-       * @param {number} index - The index of the stop.
+       * @param {number} index - The index of the stop within its day.
        * @returns {string} Hex color string.
        */
       getRouteColor(index) {
@@ -45,7 +47,7 @@
       },
       /**
        * Generates a style object for the stop number badge.
-       * @param {number} index - The index of the stop.
+       * @param {number} index - The index of the stop within its day.
        * @returns {Object} CSS style object.
        */
       getBadgeStyle(index) {

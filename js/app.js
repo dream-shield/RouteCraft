@@ -12,6 +12,7 @@
   createApp({
     components: {
       'stop-card': window.StopCard,
+      'day-header': window.DayHeader,
       'add-stop-menu': window.AddStopMenu,
       'local-data-toast': window.LocalDataToast
     },
@@ -58,7 +59,8 @@
     computed: {
       // Shorthand aliases to store properties
       stops() { return this.store.stops; },
-      activeIndex() { return this.store.activeIndex; }
+      activeIndex() { return this.store.activeIndex; },
+      activeDayId() { return this.store.activeDayId; }
     },
 
     methods: {
@@ -135,8 +137,8 @@
       /** Synchronizes the current stop data with the map's markers and route lines. */
       syncMapData() {
         if (!this.mapLoaded) return;
-        this.markers = RC.renderMarkers(window.maplibregl, this.map, this.stops, this.markers, this.activeIndex, this.routeColors);
-        RC.refreshRouteLayer(this.map, this.stops, this.routeColors, this.routeGeometries);
+        this.markers = RC.renderMarkers(window.maplibregl, this.map, this.stops, this.markers, this.activeIndex, this.routeColors, this.activeDayId);
+        RC.refreshRouteLayer(this.map, this.stops, this.routeColors, this.routeGeometries, this.activeDayId);
       },
 
       /** Fetches updated route geometries for all segments in the itinerary. */
@@ -145,8 +147,13 @@
         for (let i = 0; i < this.stops.length - 1; i++) {
           const origin = this.stops[i];
           const destination = this.stops[i + 1];
-          const mode = destination.transportMode || "auto";
-          geometries.push(await RC.fetchRouteSegment(origin, destination, mode, this.stadiaApiKey));
+          
+          if (origin.dayId === destination.dayId) {
+            const mode = destination.transportMode || "auto";
+            geometries.push(await RC.fetchRouteSegment(origin, destination, mode, this.stadiaApiKey));
+          } else {
+            geometries.push(null);
+          }
         }
         this.routeGeometries = geometries;
         this.syncMapData();
@@ -154,16 +161,24 @@
 
       /**
        * Sets the transport mode for a specific segment and fetches new geometry.
-       * @param {number} index - Index of the destination stop for the segment.
+       * @param {number} index - Index of the destination stop for the segment in the full list.
        * @param {TransportMode} mode - The new transport mode.
        */
       async setSegmentMode(index, mode) {
         this.store.updateStop(index, { transportMode: mode });
         const start = this.stops[index - 1];
         const end = this.stops[index];
-        const coords = await RC.fetchRouteSegment(start, end, mode, this.stadiaApiKey);
-        this.routeGeometries[index - 1] = coords;
+        if (start && end && start.dayId === end.dayId) {
+          const coords = await RC.fetchRouteSegment(start, end, mode, this.stadiaApiKey);
+          this.routeGeometries[index - 1] = coords;
+        }
         this.syncMapData();
+      },
+
+      /** Helper to set mode by stop ID (useful in grouped list) */
+      setSegmentModeByStopId(stopId, mode) {
+        const idx = this.stops.findIndex(s => s.id === stopId);
+        if (idx !== -1) this.setSegmentMode(idx, mode);
       },
 
       /**
@@ -252,26 +267,113 @@
         if (this.activeIndex >= 0) this.flyToStop(this.activeIndex, false);
       },
 
-      /** Initializes Sortable.js for drag-and-drop reordering of stop cards. */
-      initSortable() {
-        if (!this.$refs.cardsList) return;
-        window.Sortable.create(this.$refs.cardsList, {
-          handle: ".drag-handle", animation: 170,
-          onEnd: (e) => {
-            const oldIdx = e.oldIndex;
-            const newIdx = e.newIndex;
-            if (oldIdx === newIdx) return;
+      /** Helper to delete a stop by its unique ID. */
+      deleteStopById(stopId) {
+        const idx = this.stops.findIndex(s => s.id === stopId);
+        if (idx !== -1) this.deleteStop(idx);
+      },
 
-            this.store.reorderStops(oldIdx, newIdx);
-            this.syncMapData();
-            if (this.activeIndex >= 0) this.flyToStop(this.activeIndex, false);
-          }
+      /** Returns all stops associated with a specific day. */
+      getStopsForDay(dayId) {
+        return this.stops.filter(s => s.dayId === dayId);
+      },
+
+      /** 
+       * Returns the relative index of a stop within its day IF it is 
+       * currently active globally. Otherwise returns -1.
+       */
+      activeStopIndexInDay(stopId, dayId) {
+        const activeStop = this.stops[this.activeIndex];
+        if (activeStop && activeStop.id === stopId) {
+          const dayStops = this.getStopsForDay(dayId);
+          return dayStops.findIndex(s => s.id === stopId);
+        }
+        return -1;
+      },
+
+      /** Focuses the map on a stop identified by its unique ID. */
+      flyToStopById(stopId) {
+        const idx = this.stops.findIndex(s => s.id === stopId);
+        if (idx !== -1) {
+          const stop = this.stops[idx];
+          if (stop.dayId) this.store.activeDayId = stop.dayId;
+          this.flyToStop(idx);
+        }
+      },
+
+      /** Initializes Sortable.js for each day's stop list. */
+      initSortable() {
+        // Use nextTick to ensure the DOM for all days is rendered
+        nextTick(() => {
+          const containers = document.querySelectorAll(".day-stops-list");
+          containers.forEach(container => {
+            // Avoid re-initializing
+            if (container.sortable) container.sortable.destroy();
+            
+            container.sortable = window.Sortable.create(container, {
+              group: "stops",
+              handle: ".drag-handle",
+              animation: 170,
+              onEnd: (e) => {
+                const stopId = Number.parseInt(e.item.id.replace("card-", ""));
+                const targetDayId = e.to.dataset.dayId;
+                const newIdxInDay = e.newIndex;
+                
+                // Find where the stop should be in the global flat list
+                const globalIdx = this.stops.findIndex(s => s.id === stopId);
+                if (globalIdx === -1) return;
+
+                // 1. Find the target day's stops
+                const targetDayStops = this.getStopsForDay(targetDayId);
+                
+                // 2. Find the global index where it should be inserted
+                let targetGlobalIdx;
+                if (targetDayStops.length === 0 || (targetDayStops.length === 1 && targetDayStops[0].id === stopId)) {
+                  // If it's the only stop in the day, move it to after the day before it (conceptually)
+                  // In our flat list model, we need to find the correct spot.
+                  // A simpler way is to just filter, move, and update.
+                  targetGlobalIdx = this.stops.length; // Placeholder
+                }
+                
+                // Because we use a flat list, moving across groups is tricky for Sortable.
+                // We'll perform a "Move to Day at Position" operation.
+                const movedStop = this.stops[globalIdx];
+                const otherStops = this.stops.filter(s => s.id !== stopId);
+                
+                // Find all stops for target day (excluding the moved one)
+                const dayStops = otherStops.filter(s => s.dayId === targetDayId);
+                
+                let insertAt;
+                if (newIdxInDay >= dayStops.length) {
+                  // Add to the end of the day's stops
+                  const lastInDay = dayStops[dayStops.length - 1];
+                  insertAt = lastInDay ? otherStops.indexOf(lastInDay) + 1 : otherStops.length;
+                } else {
+                  // Insert before a specific stop
+                  const beforeStop = dayStops[newIdxInDay];
+                  insertAt = otherStops.indexOf(beforeStop);
+                }
+
+                // Apply updates to the store
+                movedStop.dayId = targetDayId;
+                otherStops.splice(insertAt, 0, movedStop);
+                this.store.stops = otherStops;
+                
+                this.syncMapData();
+                this.flyToStopById(stopId);
+                
+                // Re-init to ensure DOM and data are in sync
+                this.initSortable();
+              }
+            });
+          });
         });
       }
     },
 
     watch: {
       stops: { handler() { this.updateRouteGeometries(); }, deep: true },
+      "store.days": { handler() { this.initSortable(); }, deep: true },
       activeIndex() { this.syncMapData(); }
     },
 

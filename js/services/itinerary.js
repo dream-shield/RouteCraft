@@ -18,33 +18,109 @@ window.RouteCraft = window.RouteCraft || {};
     return rawStops
       .map((stop) => ({
         id: Number.isFinite(Number(stop.id)) ? Number(stop.id) : null,
+        dayId: stop.dayId || null,
         title: String(stop.title || "").trim(),
         description: String(stop.description || "").trim(),
         longitude: Number(stop.longitude),
         latitude: Number(stop.latitude),
         zoomLevel: RC.clampZoom(stop.zoomLevel),
         searchQuery: String(stop.searchQuery || stop.title || "").trim(),
-        transportMode: stop.transportMode || (stop.id === 1 ? null : "auto")
+        transportMode: stop.transportMode || "auto"
       }))
       .filter((stop) => stop.title && Number.isFinite(stop.longitude) && Number.isFinite(stop.latitude));
   }
 
   /**
    * Updates stop IDs based on their current array index and ensures
-   * the first stop has no transport mode.
+   * the first stop of each day (or the first stop overall in legacy mode) has no transport mode.
    * @param {Stop[]} stops - The array of stops to update.
    * @returns {{stops: Stop[], nextId: number}} The updated stops and the next available ID.
    */
   function updateStopIdsAndNextId(stops) {
-    const updated = stops.map((stop, idx) => ({
-      ...stop,
-      id: idx + 1,
-      transportMode: idx === 0 ? null : (stop.transportMode || "auto")
-    }));
+    const seenDayIds = new Set();
+    const updated = stops.map((stop, idx) => {
+      const isFirstInDay = !stop.dayId || !seenDayIds.has(stop.dayId);
+      if (stop.dayId) seenDayIds.add(stop.dayId);
+      
+      return {
+        ...stop,
+        id: idx + 1,
+        transportMode: isFirstInDay ? null : (stop.transportMode || "auto")
+      };
+    });
     return {
       stops: updated,
       nextId: updated.length + 1
     };
+  }
+
+  /**
+   * Creates a new day object with a default date.
+   * @param {Day[]} existingDays - Currently existing days.
+   * @returns {Day}
+   */
+  function createDay(existingDays = []) {
+    const id = Math.random().toString(36).substr(2, 9);
+    let date = new Date();
+    
+    if (existingDays.length > 0) {
+      const lastDay = existingDays[existingDays.length - 1];
+      date = new Date(lastDay.date);
+      date.setDate(date.getDate() + 1);
+    }
+    
+    return {
+      id,
+      date: date.toISOString().split('T')[0],
+      description: "",
+      isCollapsed: false
+    };
+  }
+
+  /**
+   * Handles migration of legacy flat-list payloads to the multi-day structure.
+   * @param {Object} payload - The raw payload (from URL or LocalStorage).
+   * @returns {Object} The migrated payload.
+   */
+  function migratePayload(payload) {
+    if (!payload) return { stops: [], days: [] };
+    
+    // If it already has days, return as is (but ensure it's an array)
+    if (Array.isArray(payload.days) && payload.days.length > 0) {
+      return payload;
+    }
+
+    // Create a default Day 1
+    const day1 = createDay([]);
+    day1.description = "Day 1";
+    
+    const stops = Array.isArray(payload.stops) ? payload.stops : [];
+    const migratedStops = stops.map(stop => ({
+      ...stop,
+      dayId: day1.id
+    }));
+
+    return {
+      ...payload,
+      days: [day1],
+      stops: migratedStops,
+      activeDayId: day1.id
+    };
+  }
+
+  /**
+   * Formats an ISO date string into a standard display format.
+   * @param {string} dateStr - ISO date string (YYYY-MM-DD).
+   * @returns {string} e.g., "14 Mar, Saturday"
+   */
+  function formatDate(dateStr) {
+    if (!dateStr) return "";
+    const date = new Date(dateStr + 'T00:00:00'); // Ensure local time parsing
+    return new Intl.DateTimeFormat('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      weekday: 'long'
+    }).format(date);
   }
 
   /**
@@ -59,7 +135,8 @@ window.RouteCraft = window.RouteCraft || {};
       id: nextId,
       ...formData,
       title: formData.title.trim(),
-      zoomLevel: RC.clampZoom(formData.zoomLevel)
+      zoomLevel: RC.clampZoom(formData.zoomLevel),
+      dayId: formData.dayId || null
     };
     return [...stops, newStop];
   }
@@ -98,6 +175,9 @@ window.RouteCraft = window.RouteCraft || {};
     updateStopIdsAndNextId,
     addStop,
     deleteStop,
-    reorderStops
+    reorderStops,
+    createDay,
+    migratePayload,
+    formatDate
   };
 })();

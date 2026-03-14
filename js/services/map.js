@@ -61,15 +61,19 @@ window.RouteCraft = window.RouteCraft || {};
    * @param {Object} map - The current map instance.
    * @param {Stop[]} stops - The itinerary stops to render as markers.
    * @param {Object[]} existingMarkers - The current array of rendered markers (to be cleared).
-   * @param {number} activeIndex - The index of the currently active stop.
+   * @param {number} activeIndex - The index of the currently active stop in the full list.
    * @param {string[]} routeColors - Array of hex colors for markers and segments.
+   * @param {string|null} activeDayId - The ID of the currently active day.
    * @returns {Object[]} The new array of MapLibre Marker instances.
    */
-  window.RouteCraft.renderMarkers = function renderMarkers(maplibregl, map, stops, existingMarkers, activeIndex, routeColors) {
+  window.RouteCraft.renderMarkers = function renderMarkers(maplibregl, map, stops, existingMarkers, activeIndex, routeColors, activeDayId) {
     existingMarkers.forEach((marker) => marker.remove());
     const markers = [];
 
-    stops.forEach((stop, index) => {
+    const activeStopId = stops[activeIndex]?.id;
+    const dayStops = activeDayId ? stops.filter(s => s.dayId === activeDayId) : stops;
+
+    dayStops.forEach((stop, index) => {
       const markerEl = document.createElement("div");
       markerEl.className = "custom-marker";
 
@@ -82,10 +86,10 @@ window.RouteCraft = window.RouteCraft || {};
       markerEl.style.borderStyle = 'solid';
       markerEl.style.borderWidth = '2px';
 
-      // Inject the number
+      // Inject the number (index within the day)
       markerEl.innerText = index + 1;
 
-      if (index === activeIndex) {
+      if (stop.id === activeStopId) {
         markerEl.classList.add("is-active");
       } else {
         markerEl.classList.add("is-dim");
@@ -108,19 +112,40 @@ window.RouteCraft = window.RouteCraft || {};
    * @param {Stop[]} stops - The itinerary stops.
    * @param {string[]} routeColors - Array of colors for route segments.
    * @param {number[][][]} [routeGeometries] - Custom geometries for the route segments.
+   * @param {string|null} activeDayId - The ID of the currently active day.
    */
-  window.RouteCraft.refreshRouteLayer = function refreshRouteLayer(map, stops, routeColors, routeGeometries = []) {
+  window.RouteCraft.refreshRouteLayer = function refreshRouteLayer(map, stops, routeColors, routeGeometries = [], activeDayId) {
     const features = [];
 
-    for (let i = 0; i < stops.length - 1; i += 1) {
+    // Filter stops by day and find their indices in the original list for geometry lookup
+    const dayStopsWithIndices = stops
+      .map((stop, index) => ({ stop, index }))
+      .filter(item => !activeDayId || item.stop.dayId === activeDayId);
+
+    for (let i = 0; i < dayStopsWithIndices.length - 1; i += 1) {
       const color = routeColors[i % routeColors.length];
-      const origin = stops[i];
-      const destination = stops[i + 1];
+      const origin = dayStopsWithIndices[i].stop;
+      const destination = dayStopsWithIndices[i + 1].stop;
+      
+      // Geometry is stored in a flat list corresponding to the original stops array.
+      // We need to find the geometry between these two specific stops.
+      // If they were adjacent in the original list, we might have it.
+      // HOWEVER, the routeGeometries is currently indexed by (original_index).
+      // If we move stops between days, this might get complicated.
+      // For now, let's assume routeGeometries is refreshed based on the filtered list in app.js
+      // OR we just use the original index if they are still adjacent.
+      
+      const originalIdx = dayStopsWithIndices[i].index;
+      const isActuallyAdjacent = dayStopsWithIndices[i+1].index === originalIdx + 1;
+      
       const fallbackCoords = [
         [origin.longitude, origin.latitude],
         [destination.longitude, destination.latitude]
       ];
-      const coords = routeGeometries[i] || fallbackCoords;
+      
+      // Use cached geometry ONLY if they are adjacent in the original array
+      // (This is a simplified assumption, app.js will need to refresh this)
+      const coords = isActuallyAdjacent ? (routeGeometries[originalIdx] || fallbackCoords) : fallbackCoords;
 
       features.push({
         type: "Feature",

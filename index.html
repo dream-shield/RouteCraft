@@ -105,7 +105,16 @@
                 Next
               </button>
               
-              <!-- Add Stop Toggle -->
+              <!-- Add Day & Stop Toggles -->
+              <button
+                type="button"
+                class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+                @click="store.addDay()"
+                title="Add day"
+              >
+                <span class="material-symbols-outlined text-base leading-none">calendar_add_on</span>
+                <span>Day</span>
+              </button>
               <button
                 type="button"
                 class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white hover:bg-blue-700"
@@ -134,26 +143,49 @@
             ></add-stop-menu>
           </div>
 
-          <!-- Itinerary List (Sortable) -->
-          <div ref="cardsList" class="space-y-3">
-            <!-- Component: Individual Stop Card -->
-            <stop-card
-              v-for="(stop, index) in stops"
-              :key="stop.id"
-              :stop="stop"
-              :index="index"
-              :active-index="activeIndex"
-              :editing-stop-id="editingStopId"
-              :edit-form="editForm"
-              :route-colors="routeColors"
-              @fly-to-stop="flyToStop"
-              @set-segment-mode="setSegmentMode"
-              @start-edit="startEdit"
-              @delete-stop="deleteStop"
-              @save-edit="saveEdit"
-              @cancel-edit="cancelEdit"
-              @select-edit-suggestion="selectEditSuggestion"
-            ></stop-card>
+          <!-- Itinerary List (Grouped by Day) -->
+          <div class="space-y-6">
+            <div v-for="day in store.days" :key="day.id" class="space-y-3">
+              <!-- Day Header -->
+              <day-header
+                :day="day"
+                :is-active="store.activeDayId === day.id"
+                @toggle-collapse="store.updateDay(day.id, { isCollapsed: !day.isCollapsed })"
+                @select-day="store.activeDayId = day.id"
+                @update-day="data => store.updateDay(day.id, data)"
+                @delete-day="store.deleteDay(day.id)"
+              ></day-header>
+
+              <!-- Day Stops (Sortable) -->
+              <div 
+                v-if="!day.isCollapsed"
+                :data-day-id="day.id"
+                class="day-stops-list space-y-3 pl-4 border-l-2 border-slate-200 ml-5"
+              >
+                <stop-card
+                  v-for="(stop, index) in getStopsForDay(day.id)"
+                  :key="stop.id"
+                  :stop="stop"
+                  :index="index"
+                  :active-index="activeStopIndexInDay(stop.id, day.id)"
+                  :is-globally-active="stops[activeIndex]?.id === stop.id"
+                  :editing-stop-id="editingStopId"
+                  :edit-form="editForm"
+                  :route-colors="routeColors"
+                  @fly-to-stop="() => flyToStopById(stop.id)"
+                  @set-segment-mode="(idx, mode) => setSegmentModeByStopId(stop.id, mode)"
+                  @start-edit="startEdit"
+                  @delete-stop="() => deleteStopById(stop.id)"
+                  @save-edit="saveEdit"
+                  @cancel-edit="cancelEdit"
+                  @select-edit-suggestion="selectEditSuggestion"
+                ></stop-card>
+                
+                <div v-if="getStopsForDay(day.id).length === 0" class="py-4 text-center text-sm text-slate-400 italic">
+                  No stops for this day.
+                </div>
+              </div>
+            </div>
           </div>
 
         </div>
@@ -163,6 +195,58 @@
   </div>
 
   <!-- VUE TEMPLATES (Used by components in js/components/) -->
+
+  <!-- Template for DayHeader.js -->
+  <script type="text/x-template" id="day-header-template">
+    <div 
+      class="group sticky top-[72px] z-20 flex flex-col gap-1 rounded-xl border bg-white/95 p-3 shadow-sm backdrop-blur transition-all"
+      :class="isActive ? 'border-blue-400 ring-1 ring-blue-100' : 'border-slate-200'"
+      @click="$emit('select-day')"
+    >
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3 overflow-hidden">
+          <button 
+            type="button"
+            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-transform"
+            :class="{ 'rotate-180': day.isCollapsed }"
+            @click.stop="$emit('toggle-collapse')"
+          >
+            <span class="material-symbols-outlined">expand_more</span>
+          </button>
+          
+          <div class="flex flex-col min-w-0">
+            <div class="flex items-center gap-2">
+              <input 
+                type="date" 
+                :value="day.date" 
+                class="bg-transparent text-sm font-bold text-slate-900 outline-none focus:text-blue-600"
+                @input="e => $emit('update-day', { date: e.target.value })"
+                @click.stop
+              />
+              <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">{{ formatDate(day.date) }}</span>
+            </div>
+            <input 
+              type="text" 
+              :value="day.description" 
+              placeholder="Add a title for this day..."
+              class="bg-transparent text-xs text-slate-500 outline-none placeholder:text-slate-300 focus:text-slate-700"
+              @input="e => $emit('update-day', { description: e.target.value })"
+              @click.stop
+            />
+          </div>
+        </div>
+
+        <button 
+          type="button"
+          class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-300 opacity-0 group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-600 transition-all"
+          title="Delete Day"
+          @click.stop="$emit('delete-day')"
+        >
+          <span class="material-symbols-outlined text-lg">delete</span>
+        </button>
+      </div>
+    </div>
+  </script>
 
   <!-- Template for LocalDataToast.js -->
   <script type="text/x-template" id="local-data-toast-template">
@@ -273,7 +357,7 @@
     <article
       :id="'card-' + stop.id"
       class="relative flex items-center gap-4 rounded-2xl border bg-white p-4 shadow transition"
-      :class="index === activeIndex ? 'border-blue-300 shadow-blue-100' : 'border-slate-200'"
+      :class="isGloballyActive ? 'border-blue-300 shadow-blue-100' : 'border-slate-200'"
       @click="$emit('fly-to-stop', index)"
     >
       <!-- Transit Mode Selector (floating above the card) -->
@@ -387,6 +471,7 @@
   
   <!-- RouteCraft Components -->
   <script src="js/components/PlaceSearch.js"></script>
+  <script src="js/components/DayHeader.js"></script>
   <script src="js/components/StopCard.js"></script>
   <script src="js/components/AddStopMenu.js"></script>
   <script src="js/components/LocalDataToast.js"></script>
