@@ -15,7 +15,7 @@ RouteCraft is built as a modular, client-side-only application using a "modern E
 To avoid global scope pollution while maintaining accessibility, the app uses a single global object: `window.RouteCraft`.
 
 - **`js/core/state.js`**: Defines the application's initial data and shared JSDoc types.
-- **`js/core/utils.js`**: Contains general-purpose utility functions (e.g., `debounce`, `clampZoom`).
+- **`js/core/utils.js`**: Contains general-purpose utility functions (e.g., `debounce`).
 
 ## Services (Business Logic)
 

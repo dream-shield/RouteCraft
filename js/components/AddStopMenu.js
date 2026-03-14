@@ -38,7 +38,6 @@
       canAddStop() {
         return (
           this.addForm.title.trim() &&
-          Number.isFinite(this.addForm.zoomLevel) &&
           Number.isFinite(this.addForm.latitude) &&
           Number.isFinite(this.addForm.longitude)
         );

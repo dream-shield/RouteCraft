@@ -82,8 +82,7 @@
       this.stops[index] = {
         ...this.stops[index],
         ...updateData,
-        title: (updateData.title || this.stops[index].title).trim(),
-        zoomLevel: RC.clampZoom(updateData.zoomLevel || this.stops[index].zoomLevel)
+        title: (updateData.title || this.stops[index].title).trim()
       };
     },
 

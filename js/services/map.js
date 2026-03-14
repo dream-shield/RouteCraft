@@ -44,7 +44,7 @@ window.RouteCraft = window.RouteCraft || {};
       container: containerId,
       style: getStyle(),
       center: [firstStop.longitude, firstStop.latitude],
-      zoom: Math.min((firstStop.zoomLevel || 12) + 0.8, 18),
+      zoom: 12.8,
       maxZoom: 18,
       pitch: 0,
       bearing: 0
@@ -170,7 +170,7 @@ window.RouteCraft = window.RouteCraft || {};
   window.RouteCraft.flyToStop = function flyToStop(map, stop) {
     map.flyTo({
       center: [stop.longitude, stop.latitude],
-      zoom: Math.min((stop.zoomLevel || 12) + 0.8, 18),
+      zoom: 12.8,
       duration: 1600,
       essential: true,
       pitch: 0,

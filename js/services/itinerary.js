@@ -31,7 +31,6 @@ window.RouteCraft = window.RouteCraft || {};
           description: String(stop.description || "").trim(),
           longitude: Number(stop.longitude),
           latitude: Number(stop.latitude),
-          zoomLevel: RC.clampZoom(stop.zoomLevel),
           searchQuery: String(stop.searchQuery || stop.title || "").trim(),
           transportMode: isFirstInDay ? null : (stop.transportMode || "auto")
         };
@@ -84,6 +83,7 @@ window.RouteCraft = window.RouteCraft || {};
 
     // Create a default Day 1
     const day1 = createDay([]);
+    day1.id = "day-1";
     day1.description = "Day 1";
 
     const stops = Array.isArray(payload.stops) ? payload.stops : [];
@@ -127,7 +127,6 @@ window.RouteCraft = window.RouteCraft || {};
       ...formData,
       id: stopId,
       title: formData.title.trim(),
-      zoomLevel: RC.clampZoom(formData.zoomLevel),
       dayId: formData.dayId || null
     };
     return [...stops, newStop];

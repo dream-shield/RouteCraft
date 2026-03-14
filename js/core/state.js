@@ -17,7 +17,6 @@ window.RouteCraft = window.RouteCraft || {};
  * @property {string} description - Brief description of the stop.
  * @property {number} longitude - WGS84 longitude.
  * @property {number} latitude - WGS84 latitude.
- * @property {number} zoomLevel - Preferred map zoom level for this stop.
  * @property {string} searchQuery - The original search string used to find this place.
  * @property {TransportMode|null} transportMode - Mode used to reach this stop from the previous one.
  */
@@ -39,9 +38,9 @@ window.RouteCraft.initialStops = [
     description: "Sunrise walk with views of the bay and Marin Headlands.",
     longitude: -122.4783,
     latitude: 37.8199,
-    zoomLevel: 12.7,
     searchQuery: "Golden Gate Bridge",
-    transportMode: null
+    transportMode: null,
+    dayId: "day-1"
   },
   {
     id: 2,
@@ -49,9 +48,9 @@ window.RouteCraft.initialStops = [
     description: "Afternoon at Tunnel View and lower Yosemite Falls.",
     longitude: -119.573,
     latitude: 37.7456,
-    zoomLevel: 11.6,
     searchQuery: "Yosemite Valley",
-    transportMode: "auto"
+    transportMode: "auto",
+    dayId: "day-1"
   },
   {
     id: 3,
@@ -59,9 +58,9 @@ window.RouteCraft.initialStops = [
     description: "Evening lights, shows, and a late-night food stop.",
     longitude: -115.1728,
     latitude: 36.1147,
-    zoomLevel: 12.8,
     searchQuery: "Las Vegas Strip",
-    transportMode: "auto"
+    transportMode: "auto",
+    dayId: "day-1"
   },
   {
     id: 4,
@@ -69,9 +68,9 @@ window.RouteCraft.initialStops = [
     description: "Golden-hour overlook at Mather Point and nearby trails.",
     longitude: -112.1401,
     latitude: 36.0544,
-    zoomLevel: 11.4,
     searchQuery: "Grand Canyon South Rim",
-    transportMode: "auto"
+    transportMode: "auto",
+    dayId: "day-1"
   },
   {
     id: 5,
@@ -79,9 +78,9 @@ window.RouteCraft.initialStops = [
     description: "Trip finale by the Pacific with sunset boardwalk views.",
     longitude: -118.4961,
     latitude: 34.0094,
-    zoomLevel: 13,
     searchQuery: "Santa Monica Pier",
-    transportMode: "auto"
+    transportMode: "auto",
+    dayId: "day-1"
   }
 ];
 
@@ -94,7 +93,6 @@ window.RouteCraft.createEmptyForm = function createEmptyForm() {
     query: "",
     title: "",
     description: "",
-    zoomLevel: 12,
     latitude: null,
     longitude: null,
     searchQuery: "",
