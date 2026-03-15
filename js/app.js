@@ -14,6 +14,7 @@
       'place-card': window.PlaceCard,
       'day-header': window.DayHeader,
       'add-stop-menu': window.AddStopMenu,
+      'multi-day-import': window.MultiDayImport,
       'local-data-toast': window.LocalDataToast
     },
     data() {
@@ -40,7 +41,10 @@
         shareMenuOpen: false,
         /** @type {boolean} State of the Import dropdown menu */
         importMenuOpen: false,
+        /** @type {boolean} Whether the multi-day import menu is visible */
+        multiDayImportOpen: false,
         /** @type {string|null} ID of the day currently being added to */
+        activeAddDayId: null,
 
         /** @type {boolean} Visibility of the local data toast */
         showLocalDataToast: false,
@@ -290,6 +294,75 @@
           this.flyToStop(newStop.id);
         }
         this.closeAddMenu();
+      },
+
+      /**
+       * Callback for when the AddStopMenu component emits a bulk set of stops.
+       * @param {Object} payload - { items: Object[], replaceExisting: boolean }
+       */
+      onComponentBulkAdd({ items, replaceExisting }) {
+        if (!items || !items.length) return;
+
+        if (replaceExisting) {
+          this.store.stops = [];
+          this.store.days = [];
+          this.store.activeDayId = null;
+          this.activeAddDayId = null;
+        }
+
+        // If no days exist, create an initial one
+        if (this.store.days.length === 0) {
+          this.store.addDay();
+        }
+
+        // Use the active day or the last day as the starting point
+        let currentDayId = this.activeAddDayId || this.store.activeDayId || this.store.days[this.store.days.length - 1].id;
+        let isFirstItemInCurrentDay = this.getStopsForDay(currentDayId).length === 0;
+
+        items.forEach(item => {
+          if (item.isDayMarker) {
+            // If the current day is NOT empty, we definitely need a new day.
+            // If the current day IS empty, we can just update its date/title.
+            if (!isFirstItemInCurrentDay) {
+              this.store.addDay();
+              currentDayId = this.store.days[this.store.days.length - 1].id;
+              isFirstItemInCurrentDay = true;
+            }
+
+            const dayUpdate = {};
+            if (item.date) dayUpdate.date = item.date;
+            // If title is just a date, maybe don't use it as description unless it's descriptive
+            if (item.originalQuery && !item.originalQuery.match(/^---$|^===$/)) {
+               dayUpdate.description = item.originalQuery;
+            }
+            
+            this.store.updateDay(currentDayId, dayUpdate);
+            this.store.activeDayId = currentDayId; // Focus on the newly updated day
+          } else {
+            const newStop = {
+              title: item.title,
+              latitude: Number.parseFloat(item.lat),
+              longitude: Number.parseFloat(item.lon),
+              searchQuery: item.displayName,
+              dayId: currentDayId
+            };
+            this.store.addStop(newStop);
+            isFirstItemInCurrentDay = false;
+          }
+        });
+
+        // Close whatever menu was open
+        this.closeAddMenu();
+        this.multiDayImportOpen = false;
+
+        // Fly to the first added stop if any
+        if (this.stops.length > 0) {
+          const firstNewStop = this.stops[this.stops.length - 1]; // Actually should find the first one from this batch
+          // For simplicity, fly to the last one added or let user navigate
+          this.flyToStop(firstNewStop.id);
+        }
+
+        this.showToast(`Imported ${items.filter(i => !i.isDayMarker).length} places.`, "success");
       },
 
       /**

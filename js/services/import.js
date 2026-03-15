@@ -45,8 +45,56 @@ window.RouteCraft = window.RouteCraft || {};
       const queries = parser(text);
       if (!queries.length) return [];
 
+      const dayMarkerRegex = /^Day\s*(\d+)$/i;
+      const separatorRegex = /^---$|^===$/;
+      const dateRegex = /^(\d{1,4})[\/\-](\d{1,2})(?:[\/\-](\d{1,4}))?$/;
+
       // Process queries in parallel, but handle each result individually
       const results = await Promise.all(queries.map(async (query) => {
+        // Check for day markers, separators, or dates first
+        const dayMatch = query.match(dayMarkerRegex);
+        const sepMatch = query.match(separatorRegex);
+        const dateMatch = query.match(dateRegex);
+
+        if (dayMatch || sepMatch || dateMatch) {
+          let dateStr = null;
+          let title = query;
+
+          if (dateMatch) {
+            const now = new Date();
+            let y, m, d;
+            
+            // Basic heuristic: if first part is 4 digits, it's year.
+            if (dateMatch[1].length === 4) {
+              [y, m, d] = [parseInt(dateMatch[1]), parseInt(dateMatch[2]), parseInt(dateMatch[3] || 1)];
+            } else {
+              [m, d, y] = [parseInt(dateMatch[1]), parseInt(dateMatch[2]), parseInt(dateMatch[3] || now.getFullYear())];
+              if (y < 100) y += 2000;
+            }
+
+            try {
+              const date = new Date(y, m - 1, d);
+              if (!isNaN(date.getTime())) {
+                dateStr = date.toISOString().split('T')[0];
+                title = `Date: ${dateStr}`;
+              }
+            } catch (e) {
+              console.error("Failed to parse date marker:", query);
+            }
+          }
+
+          return {
+            originalQuery: query,
+            found: true,
+            isDayMarker: true,
+            title: title,
+            displayName: dateStr ? `New day on ${dateStr}` : "New day marker",
+            date: dateStr,
+            lat: null,
+            lon: null
+          };
+        }
+
         try {
           const suggestions = await RC.fetchSuggestions(query);
           if (suggestions && suggestions.length > 0) {
