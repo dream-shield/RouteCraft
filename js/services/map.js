@@ -59,21 +59,30 @@ window.RouteCraft = window.RouteCraft || {};
    * Clears old markers and renders new ones for all stops.
    * @param {Object} maplibregl - The MapLibre GL JS library.
    * @param {Object} map - The current map instance.
-   * @param {Stop[]} dayStops - The itinerary stops for the active day to render.
+   * @param {Stop[]} allStops - All itinerary stops.
    * @param {Object[]} existingMarkers - The current array of rendered markers (to be cleared).
    * @param {string|number|null} activeStopId - The ID of the currently active stop.
+   * @param {string|null} activeDayId - The ID of the currently active day.
    * @param {string[]} routeColors - Array of hex colors for markers and segments.
    * @returns {Object[]} The new array of MapLibre Marker instances.
    */
-  window.RouteCraft.renderMarkers = function renderMarkers(maplibregl, map, dayStops, existingMarkers, activeStopId, routeColors) {
+  window.RouteCraft.renderMarkers = function renderMarkers(maplibregl, map, allStops, existingMarkers, activeStopId, activeDayId, routeColors) {
     existingMarkers.forEach((marker) => marker.remove());
     const markers = [];
 
-    dayStops.forEach((stop, index) => {
+    // Track indexing per day for marker labels
+    const dayIndices = {};
+
+    allStops.forEach((stop) => {
+      // Calculate label (index within its own day)
+      const dId = stop.dayId || 'no-day';
+      dayIndices[dId] = (dayIndices[dId] || 0) + 1;
+      const label = dayIndices[dId];
+
       const markerEl = document.createElement("div");
       markerEl.className = "custom-marker";
 
-      const color = routeColors[index % routeColors.length];
+      const color = routeColors[(label - 1) % routeColors.length];
 
       // High-Contrast Solid Styling
       markerEl.style.backgroundColor = color;
@@ -82,13 +91,11 @@ window.RouteCraft = window.RouteCraft || {};
       markerEl.style.borderStyle = 'solid';
       markerEl.style.borderWidth = '2px';
 
-      // Inject the number (index within the day)
-      markerEl.innerText = index + 1;
+      markerEl.innerText = label;
 
+      // Highlight logic
       if (stop.id === activeStopId) {
         markerEl.classList.add("is-active");
-      } else {
-        markerEl.classList.add("is-dim");
       }
 
       const marker = new maplibregl.Marker({ element: markerEl, anchor: "center" })
@@ -109,33 +116,42 @@ window.RouteCraft = window.RouteCraft || {};
   /**
    * Updates the GeoJSON source and layer that displays the itinerary route.
    * @param {Object} map - The map instance.
-   * @param {Stop[]} dayStops - The itinerary stops for the active day.
+   * @param {Stop[]} allStops - All itinerary stops.
+   * @param {string|null} activeDayId - The ID of the currently active day.
    * @param {string[]} routeColors - Array of colors for route segments.
    * @param {number[][][]} routeGeometries - Custom geometries for the route segments.
-   * @param {Stop[]} fullStops - The complete flat list of stops for index resolution.
    */
-  window.RouteCraft.refreshRouteLayer = function refreshRouteLayer(map, dayStops, routeColors, routeGeometries = [], fullStops = []) {
+  window.RouteCraft.refreshRouteLayer = function refreshRouteLayer(map, allStops, activeDayId, routeColors, routeGeometries = []) {
     const features = [];
+    const dayCounter = {};
 
-    for (let i = 0; i < dayStops.length - 1; i += 1) {
-      const color = routeColors[i % routeColors.length];
-      const origin = dayStops[i];
-      const destination = dayStops[i + 1];
+    for (let i = 0; i < allStops.length - 1; i += 1) {
+      const origin = allStops[i];
+      const destination = allStops[i + 1];
 
-      const originalIdx = fullStops.findIndex(s => s.id === origin.id);
-      const nextIdx = fullStops.findIndex(s => s.id === destination.id);
-      const isActuallyAdjacent = nextIdx === originalIdx + 1;
+      // Increment counter for numbering consistency
+      const dId = origin.dayId || 'no-day';
+      dayCounter[dId] = (dayCounter[dId] || 0) + 1;
+      const labelIdx = dayCounter[dId] - 1;
+
+      // Only draw routes within the same day
+      if (origin.dayId !== destination.dayId) continue;
+
+      const color = routeColors[labelIdx % routeColors.length];
 
       const fallbackCoords = [
         [origin.longitude, origin.latitude],
         [destination.longitude, destination.latitude]
       ];
 
-      const coords = isActuallyAdjacent ? (routeGeometries[originalIdx] || fallbackCoords) : fallbackCoords;
+      // Geometries are indexed by the original global stop index
+      const coords = routeGeometries[i] || fallbackCoords;
 
       features.push({
         type: "Feature",
-        properties: { color: color },
+        properties: { 
+          color: color
+        },
         geometry: { type: "LineString", coordinates: coords }
       });
     }

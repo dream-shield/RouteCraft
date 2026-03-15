@@ -169,8 +169,8 @@
         if (!this.mapLoaded) return;
 
         const activeStopId = this.stops[this.activeIndex]?.id;
-        this.markers = RC.renderMarkers(window.maplibregl, this.map, this.stopsForActiveDay, this.markers, activeStopId, this.routeColors);
-        RC.refreshRouteLayer(this.map, this.stopsForActiveDay, this.routeColors, this.routeGeometries, this.stops);
+        this.markers = RC.renderMarkers(window.maplibregl, this.map, this.stops, this.markers, activeStopId, this.activeDayId, this.routeColors);
+        RC.refreshRouteLayer(this.map, this.stops, this.activeDayId, this.routeColors, this.routeGeometries);
       },
 
       /** Fetches updated route geometries for all segments in the itinerary. */
@@ -519,6 +519,7 @@
         if (this.mapLoaded && dayStops.length > 0) {
           RC.fitToDayStops(this.map, dayStops);
         }
+        this.syncMapData();
       }
     },
 
