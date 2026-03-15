@@ -33,6 +33,95 @@ window.RouteCraft = window.RouteCraft || {};
   }
 
   /**
+   * Determines styling properties for a route segment.
+   * @param {Stop} origin - The origin stop.
+   * @param {Stop} destination - The destination stop.
+   * @param {string|number|null} activeStopId - ID of the currently selected stop.
+   * @param {string|null} activeDayId - The ID of the currently active day.
+   * @returns {Object} An object containing opacity, width, and isActive flags.
+   */
+  function getSegmentStyle(origin, destination, activeStopId, activeDayId) {
+    const isConnectedToActive = activeStopId && (origin.id === activeStopId || destination.id === activeStopId);
+    const isDayActive = activeDayId && origin.dayId === activeDayId;
+
+    let opacity = 0.3;
+    let width = 5;
+
+    if (isConnectedToActive) {
+      opacity = 1.0;
+      width = 10;
+    } else if (isDayActive) {
+      opacity = 0.7;
+      width = 7.5;
+    }
+
+    return { opacity, width, isActive: !!isConnectedToActive };
+  }
+
+  /**
+   * Generates a pre-calculated sequence of line-dasharray values for smooth forward marching ants.
+   * @param {number} dashLength - Length of the dash.
+   * @param {number} gapLength - Length of the gap.
+   * @param {number} resolution - Number of frames in the cycle.
+   * @returns {number[][]} Array of dasharray frames.
+   */
+  function generateDashArraySequence(dashLength = 4, gapLength = 4, resolution = 64) {
+    const sequence = [];
+    const totalCycle = dashLength + gapLength;
+    
+    // Build the sequence in reverse to fix the marching direction (forward)
+    for (let i = resolution - 1; i >= 0; i--) {
+      const s = (i / resolution) * totalCycle;
+      if (s < dashLength) {
+        // Part 1: First dash is shrinking, followed by gap, then second dash grows
+        sequence.push([dashLength - s, gapLength, s, 0]);
+      } else {
+        // Part 2: Gap is shrinking, followed by dash, then second gap grows
+        const sGap = s - dashLength;
+        sequence.push([0, gapLength - sGap, dashLength, sGap]);
+      }
+    }
+    return sequence;
+  }
+
+  // Cache the sequence globally for performance
+  const MARCHING_ANTS_SEQUENCE = generateDashArraySequence();
+  let animationRegistry = new WeakMap();
+
+  /**
+   * Starts a robust animation loop for a specific map layer.
+   * Ensures only one requestAnimationFrame runs per map instance.
+   * @param {Object} map - The map instance.
+   * @param {string} layerId - The ID of the line layer to animate.
+   */
+  function startAntsAnimation(map, layerId) {
+    // If already animating for this map, don't start another loop
+    if (animationRegistry.has(map)) return;
+    
+    animationRegistry.set(map, true);
+    let stepIdx = 0;
+
+    function animate(timestamp) {
+      if (!map.getStyle() || !map.getLayer(layerId)) {
+        // Stop animation if map is unmounted or layer is gone
+        animationRegistry.delete(map);
+        return; 
+      }
+
+      // Speed control: ~32ms per step for smooth 30fps+ feel
+      const newStepIdx = Math.floor((timestamp / 32) % MARCHING_ANTS_SEQUENCE.length);
+
+      if (newStepIdx !== stepIdx) {
+        map.setPaintProperty(layerId, "line-dasharray", MARCHING_ANTS_SEQUENCE[newStepIdx]);
+        stepIdx = newStepIdx;
+      }
+
+      requestAnimationFrame(animate);
+    }
+    requestAnimationFrame(animate);
+  }
+
+  /**
    * Initializes the MapLibre map instance.
    * @param {Object} maplibregl - The MapLibre GL JS library.
    * @param {string} containerId - The ID of the HTML element to host the map.
@@ -97,6 +186,11 @@ window.RouteCraft = window.RouteCraft || {};
       if (stop.id === activeStopId) {
         markerEl.classList.add("is-active");
       }
+      
+      // Dim markers from other days
+      if (activeDayId && stop.dayId !== activeDayId) {
+        markerEl.classList.add("is-dim");
+      }
 
       const marker = new maplibregl.Marker({ element: markerEl, anchor: "center" })
         .setLngLat([stop.longitude, stop.latitude])
@@ -120,8 +214,9 @@ window.RouteCraft = window.RouteCraft || {};
    * @param {string|null} activeDayId - The ID of the currently active day.
    * @param {string[]} routeColors - Array of colors for route segments.
    * @param {number[][][]} routeGeometries - Custom geometries for the route segments.
+   * @param {string|number|null} activeStopId - ID of the currently selected stop.
    */
-  window.RouteCraft.refreshRouteLayer = function refreshRouteLayer(map, allStops, activeDayId, routeColors, routeGeometries = []) {
+  window.RouteCraft.refreshRouteLayer = function refreshRouteLayer(map, allStops, activeDayId, routeColors, routeGeometries = [], activeStopId = null) {
     const features = [];
     const dayCounter = {};
 
@@ -147,10 +242,16 @@ window.RouteCraft = window.RouteCraft || {};
       // Geometries are indexed by the original global stop index
       const coords = routeGeometries[i] || fallbackCoords;
 
+      // Use extracted helper for styling properties
+      const styleProps = getSegmentStyle(origin, destination, activeStopId, activeDayId);
+
       features.push({
         type: "Feature",
         properties: { 
-          color: color
+          color: color,
+          opacity: styleProps.opacity,
+          width: styleProps.width,
+          isActive: styleProps.isActive
         },
         geometry: { type: "LineString", coordinates: coords }
       });
@@ -172,9 +273,54 @@ window.RouteCraft = window.RouteCraft || {};
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
           "line-color": ["get", "color"],
-          "line-width": 7
+          "line-width": ["get", "width"],
+          "line-opacity": ["get", "opacity"]
         }
       });
+    } else {
+      // Robustly update existing layer paint properties
+      try {
+        map.setPaintProperty("trip-route-line", "line-width", ["get", "width"]);
+        map.setPaintProperty("trip-route-line", "line-opacity", ["get", "opacity"]);
+        map.setPaintProperty("trip-route-line", "line-color", ["get", "color"]);
+      } catch (e) {
+        // Fallback: Re-create layer if data-driven styling fails to apply
+        map.removeLayer("trip-route-line");
+        map.addLayer({
+          id: "trip-route-line",
+          type: "line",
+          source: "trip-route",
+          layout: { "line-cap": "round", "line-join": "round" },
+          paint: {
+            "line-color": ["get", "color"],
+            "line-width": ["get", "width"],
+            "line-opacity": ["get", "opacity"]
+          }
+        });
+      }
+    }
+
+    // Add the "marching ants" dashed layer for active segments
+    if (!map.getLayer("trip-route-ants")) {
+      map.addLayer({
+        id: "trip-route-ants",
+        type: "line",
+        source: "trip-route",
+        layout: { "line-join": "round" }, // Removed line-cap: round to avoid dots
+        filter: ["==", ["get", "isActive"], true],
+        paint: {
+          "line-color": "#ffffff",
+          "line-width": 4,
+          "line-dasharray": [0, 3, 3],
+          "line-opacity": 0.9
+        }
+      });
+
+      // Delegate to extracted animation loop manager
+      startAntsAnimation(map, "trip-route-ants");
+    } else {
+      // Update the filter in case the selection changed
+      map.setFilter("trip-route-ants", ["==", ["get", "isActive"], true]);
     }
   };
 

@@ -170,7 +170,7 @@
 
         const activeStopId = this.stops[this.activeIndex]?.id;
         this.markers = RC.renderMarkers(window.maplibregl, this.map, this.stops, this.markers, activeStopId, this.activeDayId, this.routeColors);
-        RC.refreshRouteLayer(this.map, this.stops, this.activeDayId, this.routeColors, this.routeGeometries);
+        RC.refreshRouteLayer(this.map, this.stops, this.activeDayId, this.routeColors, this.routeGeometries, activeStopId);
       },
 
       /** Fetches updated route geometries for all segments in the itinerary. */
