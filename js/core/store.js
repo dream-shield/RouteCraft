@@ -53,14 +53,53 @@
     },
 
     /**
+     * Ensures the global 'stops' array matches the chronological order of days.
+     * This is critical for routing, which expects contiguous stops for each day.
+     */
+    sortStopsByDay() {
+      const sortedDays = this.sortedDays;
+      const dayOrder = sortedDays.map(d => d.id);
+      
+      const activeId = this.stops[this.activeIndex]?.id;
+
+      // Use a stable sort to maintain relative order within the same day
+      this.stops.sort((a, b) => {
+        const idxA = dayOrder.indexOf(a.dayId);
+        const idxB = dayOrder.indexOf(b.dayId);
+        return idxA - idxB;
+      });
+
+      // Restore active index if the active stop moved
+      if (activeId !== undefined) {
+        const newIdx = this.stops.findIndex(s => s.id === activeId);
+        if (newIdx !== -1) this.activeIndex = newIdx;
+      }
+    },
+
+    /**
      * Adds a new stop to the itinerary.
      * @param {Object} formData - Data for the new stop.
      */
     addStop(formData) {
       const dayId = formData.dayId || this.activeDayId || (this.days[0] && this.days[0].id);
       const stopId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      this.stops = ItineraryService.addStop(this.stops, { ...formData, id: stopId, dayId }, stopId);
-      this.activeIndex = this.stops.length - 1;
+      
+      // Initial transport mode: auto if there's already a stop in this day, else null
+      const hasStopsInDay = this.stops.some(s => s.dayId === dayId);
+      
+      const newStop = { 
+        ...formData, 
+        id: stopId, 
+        dayId, 
+        title: formData.title.trim(),
+        transportMode: hasStopsInDay ? (formData.transportMode || "auto") : null
+      };
+
+      this.stops.push(newStop);
+      this.sortStopsByDay();
+      
+      // Select the newly added stop
+      this.activeIndex = this.stops.findIndex(s => s.id === stopId);
     },
 
     /**
@@ -135,6 +174,10 @@
       const day = this.days.find(d => d.id === dayId);
       if (day) {
         Object.assign(day, updateData);
+        // If the date changed, re-sort stops to match new day order
+        if (updateData.date) {
+          this.sortStopsByDay();
+        }
       }
     },
 
@@ -155,6 +198,9 @@
       this.stops = sanitizedStops;
       this.days = migrated.days || [];
       this.activeDayId = migrated.activeDayId || (this.days[0] && this.days[0].id) || null;
+
+      // Ensure stops are correctly ordered on load for routing
+      this.sortStopsByDay();
 
       this.activeIndex = Math.min(
         Math.max(Number(payload.activeIndex) || 0, 0),

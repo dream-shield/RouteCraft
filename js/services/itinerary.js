@@ -116,23 +116,6 @@ window.RouteCraft = window.RouteCraft || {};
   }
 
   /**
-   * Logic for adding a new stop to the itinerary.
-   * @param {Stop[]} stops - Current array of stops.
-   * @param {Object} formData - New stop data from the UI.
-   * @param {string|number} stopId - The stable ID to assign to the new stop.
-   * @returns {Stop[]} A new array containing all previous stops plus the new one.
-   */
-  function addStop(stops, formData, stopId) {
-    const newStop = {
-      ...formData,
-      id: stopId,
-      title: formData.title.trim(),
-      dayId: formData.dayId || null
-    };
-    return [...stops, newStop];
-  }
-
-  /**
    * Logic for deleting a stop from the itinerary by index.
    * @param {Stop[]} stops - Current array of stops.
    * @param {number} index - The index of the stop to remove.
@@ -163,7 +146,6 @@ window.RouteCraft = window.RouteCraft || {};
    */
   window.RouteCraft.ItineraryService = {
     sanitizeStops,
-    addStop,
     deleteStop,
     reorderStops,
     createDay,
