@@ -1,19 +1,18 @@
 /**
- * @fileoverview Service for location search and geocoding using Photon (OSM-based).
- * Includes custom scoring logic to improve result relevance.
+ * @fileoverview Service for location search and geocoding.
+ * Supports multiple interchangeable providers (Nominatim, Photon).
  */
 
 window.RouteCraft = window.RouteCraft || {};
 
 (function searchModule() {
+  const RC = window.RouteCraft;
+
   /**
-   * Normalizes text by lowercasing, stripping special characters,
-   * and collapsing multiple spaces.
-   * @param {string} value - The raw text to normalize.
-   * @returns {string} The normalized text.
+   * Normalizes text for better comparison and scoring.
    */
   function normalizeText(value) {
-    return value
+    return (value || "")
       .toLowerCase()
       .normalize("NFKD")
       .replace(/[^a-z0-9 ]/g, "")
@@ -22,10 +21,7 @@ window.RouteCraft = window.RouteCraft || {};
   }
 
   /**
-   * Calculates a relevance score for a search result based on the user's query.
-   * @param {Object} result - The search result from the API.
-   * @param {string} rawQuery - The user's search query.
-   * @returns {number} The calculated score (higher is better).
+   * Shared scoring logic to enhance relevance across different providers.
    */
   function scoreResult(result, rawQuery) {
     const queryNorm = normalizeText(rawQuery);
@@ -37,28 +33,28 @@ window.RouteCraft = window.RouteCraft || {};
     if (name.startsWith(queryNorm)) score += 200;
     if (name.includes(queryNorm)) score += 120;
     if (compactQuery && compactName.includes(compactQuery)) score += 100;
-    score += Number(result.importance || 0) * 25;
+
+    // Add a boost based on the provider's reported importance
+    score += (result.importance || 0) * 100;
 
     return score;
   }
 
   /**
-   * Internal helper to perform a specific search variant against the Photon API.
-   * @param {string} queryVariant - The search query to perform.
-   * @returns {Promise<Object[]>} A promise resolving to the list of geocoding results.
+   * PHOTON PROVIDER: Fast OSM-based search by Komoot.
    */
-  async function searchVariant(queryVariant) {
-    const response = await fetch(
-      `https://photon.komoot.io/api/?q=${encodeURIComponent(queryVariant)}&limit=12&lang=en`,
-      { headers: { Accept: "application/json" } }
-    );
+  const PhotonProvider = {
+    async search(query) {
+      const response = await fetch(
+        `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=12&lang=en`,
+        { headers: { Accept: "application/json" } }
+      );
 
-    if (!response.ok) return [];
-    const payload = await response.json();
-    const features = Array.isArray(payload?.features) ? payload.features : [];
+      if (!response.ok) return [];
+      const payload = await response.json();
+      const features = Array.isArray(payload?.features) ? payload.features : [];
 
-    return features
-      .map((feature) => {
+      return features.map((feature) => {
         const props = feature?.properties || {};
         const coords = feature?.geometry?.coordinates || [];
         const lon = Number(coords[0]);
@@ -66,48 +62,93 @@ window.RouteCraft = window.RouteCraft || {};
 
         if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
 
-        const nameParts = [
-          props.name,
-          props.street,
-          props.city,
-          props.state,
-          props.country
-        ].filter(Boolean);
-
-        const displayName = nameParts.join(", ");
-        const placeId = `${props.osm_type || "unknown"}:${props.osm_id || displayName}`;
+        const nameParts = [props.name, props.street, props.city, props.state, props.country].filter(Boolean);
         const kind = String(props.osm_key || "").toLowerCase();
-        const baseImportance = ["tourism", "amenity", "place"].includes(kind) ? 0.8 : 0.45;
+        const importance = ["tourism", "amenity", "place"].includes(kind) ? 0.8 : 0.45;
 
         return {
-          place_id: placeId,
-          display_name: displayName || props.name || queryVariant,
+          place_id: `photon:${props.osm_type || "u"}:${props.osm_id || Math.random()}`,
+          display_name: nameParts.join(", "),
           lat: String(lat),
           lon: String(lon),
-          importance: baseImportance
+          importance: importance,
+          raw: feature
         };
-      })
-      .filter(Boolean);
-  }
+      }).filter(Boolean);
+    }
+  };
 
   /**
-   * Fetches location suggestions for a query string, including result deduplication and sorting.
-   * @param {string} query - The search query to find suggestions for.
-   * @returns {Promise<Object[]>} A promise resolving to the top 10 relevant suggestions.
+   * NOMINATIM PROVIDER: Official OpenStreetMap search (Highly reliable ranking).
    */
-  window.RouteCraft.fetchSuggestions = async function fetchSuggestions(query) {
-    const normalized = query.trim();
-    if (!normalized) return [];
+  const NominatimProvider = {
+    async search(query) {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=10&addressdetails=1`,
+        { headers: { Accept: "application/json", "User-Agent": "RouteCraft/1.0" } }
+      );
 
-    const compact = normalized.replace(/\s+/g, "");
-    const variants = compact !== normalized ? [normalized, compact] : [normalized];
+      if (!response.ok) return [];
+      const items = await response.json();
 
-    const allResults = (await Promise.all(variants.map((variant) => searchVariant(variant)))).flat();
-    if (!allResults.length) return [];
+      return items.map((item) => ({
+        place_id: `nominatim:${item.place_id || item.osm_id}`,
+        display_name: item.display_name,
+        lat: item.lat,
+        lon: item.lon,
+        importance: Number(item.importance) || 0.5,
+        raw: item
+      }));
+    }
+  };
 
-    const deduped = Array.from(new Map(allResults.map((item) => [item.place_id, item])).values());
-    deduped.sort((a, b) => scoreResult(b, normalized) - scoreResult(a, normalized));
+  /**
+   * PROVIDER REGISTRY
+   */
+  const providers = {
+    nominatim: NominatimProvider,
+    photon: PhotonProvider
+  };
 
-    return deduped.slice(0, 10);
+  /** @type {string} Active provider key */
+  let activeProvider = "nominatim";
+
+  /**
+   * Fetches location suggestions for a query string.
+   * @param {string} query - The search query.
+   * @returns {Promise<Object[]>} Top relevant suggestions.
+   */
+  RC.fetchSuggestions = async function fetchSuggestions(query) {
+    const rawQuery = query.trim();
+    if (!rawQuery) return [];
+
+    try {
+      const provider = providers[activeProvider];
+      if (!provider) throw new Error(`Search provider "${activeProvider}" not found.`);
+
+      const results = await provider.search(rawQuery);
+      if (!results.length) return [];
+
+      // Deduplicate and re-score using local logic for consistency
+      const deduped = Array.from(new Map(results.map((item) => [item.place_id, item])).values());
+      deduped.sort((a, b) => scoreResult(b, rawQuery) - scoreResult(a, rawQuery));
+
+      return deduped.slice(0, 10);
+    } catch (error) {
+      console.error("Search Service Error:", error);
+      return [];
+    }
+  };
+
+  /**
+   * Changes the active search provider.
+   * @param {string} providerKey - Key in the providers registry (e.g. 'photon', 'nominatim').
+   */
+  RC.setSearchProvider = function setSearchProvider(providerKey) {
+    if (providers[providerKey]) {
+      activeProvider = providerKey;
+      console.log(`Search provider switched to: ${providerKey}`);
+    }
   };
 })();
+
