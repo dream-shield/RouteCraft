@@ -47,7 +47,11 @@ window.RouteCraft = window.RouteCraft || {};
     let opacity = 0.3;
     let width = 5;
 
-    if (isConnectedToActive) {
+    // If a specific day or stop is selected, hide routes from other days
+    if (activeDayId && origin.dayId !== activeDayId) {
+      opacity = 0;
+      width = 0;
+    } else if (isConnectedToActive) {
       opacity = 1.0;
       width = 10;
     } else if (isDayActive) {
@@ -187,9 +191,9 @@ window.RouteCraft = window.RouteCraft || {};
         markerEl.classList.add("is-active");
       }
       
-      // Dim markers from other days
+      // Show markers from other days ONLY if no specific day is selected
       if (activeDayId && stop.dayId !== activeDayId) {
-        markerEl.classList.add("is-dim");
+        return;
       }
 
       const marker = new maplibregl.Marker({ element: markerEl, anchor: "center" })

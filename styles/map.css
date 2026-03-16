@@ -18,10 +18,6 @@
     pointer-events: auto;
 }
 
-.custom-marker.is-dim {
-  opacity: 0.7;
-}
-
 .custom-marker.is-active {
   opacity: 1;
   transform: scale(1.2);

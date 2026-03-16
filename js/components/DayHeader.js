@@ -23,11 +23,10 @@
     methods: {
       /**
        * Combined action for clicking the Day Header.
-       * Toggles the collapse state AND selects the day on the map.
+       * Selects the day on the map.
        */
       toggleAndSelect() {
         this.$emit('select-day');
-        this.$emit('toggle-collapse');
       },
       /**
        * Triggers the hidden date picker by clicking the hidden input.

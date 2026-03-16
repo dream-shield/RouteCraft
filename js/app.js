@@ -515,10 +515,24 @@
       "store.days": { handler() { this.initSortable(); }, deep: true },
       activeIndex() { this.syncMapData(); },
       activeDayId(newDayId) {
+        if (!newDayId) return;
+
+        // Ensure the selected day is expanded
+        this.store.updateDay(newDayId, { isCollapsed: false });
+
         const dayStops = this.getStopsForDay(newDayId);
         if (this.mapLoaded && dayStops.length > 0) {
           RC.fitToDayStops(this.map, dayStops);
         }
+
+        // If no stop from this day is selected, select the first one
+        const currentActiveStop = this.stops[this.activeIndex];
+        if (!currentActiveStop || currentActiveStop.dayId !== newDayId) {
+          if (dayStops.length > 0) {
+            this.flyToStop(dayStops[0].id, true);
+          }
+        }
+
         this.syncMapData();
       }
     },
