@@ -105,13 +105,27 @@ window.RouteCraft = window.RouteCraft || {};
   /**
    * PROVIDER REGISTRY
    */
-  const providers = {
-    nominatim: NominatimProvider,
-    photon: PhotonProvider
+  const providerRegistry = {
+    nominatim: {
+      impl: NominatimProvider,
+      name: "Nominatim",
+      description: "Official OSM Search"
+    },
+    photon: {
+      impl: PhotonProvider,
+      name: "Photon",
+      description: "Fuzzy OSM Search"
+    }
   };
 
   /** @type {string} Active provider key */
   let activeProvider = "nominatim";
+
+  /**
+   * Expose providers and current state
+   */
+  RC.getSearchProviders = () => providerRegistry;
+  RC.getActiveSearchProvider = () => activeProvider;
 
   /**
    * Fetches location suggestions for a query string.
@@ -123,7 +137,7 @@ window.RouteCraft = window.RouteCraft || {};
     if (!rawQuery) return [];
 
     try {
-      const provider = providers[activeProvider];
+      const provider = providerRegistry[activeProvider]?.impl;
       if (!provider) throw new Error(`Search provider "${activeProvider}" not found.`);
 
       const results = await provider.search(rawQuery);
@@ -145,7 +159,7 @@ window.RouteCraft = window.RouteCraft || {};
    * @param {string} providerKey - Key in the providers registry (e.g. 'photon', 'nominatim').
    */
   RC.setSearchProvider = function setSearchProvider(providerKey) {
-    if (providers[providerKey]) {
+    if (providerRegistry[providerKey]) {
       activeProvider = providerKey;
       console.log(`Search provider switched to: ${providerKey}`);
     }
