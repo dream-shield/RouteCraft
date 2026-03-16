@@ -216,7 +216,7 @@
       },
 
       /**
-       * Focuses the map on a specific stop.
+       * Focuses the map on a specific stop and its neighbors.
        * @param {string|number} stopId - The ID of the stop to focus.
        * @param {boolean} [shouldScroll=true] - Whether to scroll the sidebar card into view.
        */
@@ -235,7 +235,20 @@
         }
 
         if (this.mapLoaded) {
-          RC.flyToStop(this.map, stop);
+          // Identify previous and next stops for the same day to fit in view
+          const stopsToFit = [stop];
+          
+          if (index > 0) {
+            const prev = this.stops[index - 1];
+            if (prev.dayId === stop.dayId) stopsToFit.unshift(prev);
+          }
+          
+          if (index < this.stops.length - 1) {
+            const next = this.stops[index + 1];
+            if (next.dayId === stop.dayId) stopsToFit.push(next);
+          }
+
+          RC.fitToStops(this.map, stopsToFit);
         }
         if (shouldScroll) {
           nextTick(() => {

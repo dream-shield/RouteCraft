@@ -345,6 +345,29 @@ window.RouteCraft = window.RouteCraft || {};
   };
 
   /**
+   * Adjusts the map view to fit a specific array of stops.
+   * @param {Object} map - The map instance.
+   * @param {Stop[]} stops - Array of stops to fit.
+   */
+  window.RouteCraft.fitToStops = function fitToStops(map, stops) {
+    if (!stops || stops.length === 0) return;
+
+    if (stops.length === 1) {
+      window.RouteCraft.flyToStop(map, stops[0]);
+      return;
+    }
+
+    const bounds = new window.maplibregl.LngLatBounds();
+    stops.forEach(stop => bounds.extend([stop.longitude, stop.latitude]));
+
+    map.fitBounds(bounds, {
+      padding: { top: 100, bottom: 100, left: 100, right: 100 },
+      maxZoom: 14,
+      duration: 1600
+    });
+  };
+
+  /**
    * Adjusts the map view to fit all stops of a specific day.
    * @param {Object} map - The map instance.
    * @param {Stop[]} dayStops - Array of stops for the day.
