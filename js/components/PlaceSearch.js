@@ -31,10 +31,39 @@
         query: this.value,
         suggestions: [],
         highlightedIndex: -1,
-        showSuggestions: false
+        showSuggestions: false,
+        activeProvider: RC.getActiveSearchProvider(),
+        showProviderMenu: false
       };
     },
+    computed: {
+      /**
+       * Returns all available search providers with metadata.
+       */
+      providers() {
+        return RC.getSearchProviders();
+      },
+      /**
+       * Returns the name of the currently active provider.
+       */
+      activeProviderName() {
+        return this.providers[this.activeProvider]?.name || "Search";
+      }
+    },
     methods: {
+      /**
+       * Changes the global search provider and refreshes the component state.
+       * @param {string} key - Key of the provider to select.
+       */
+      selectProvider(key) {
+        RC.setSearchProvider(key);
+        this.activeProvider = key;
+        this.showProviderMenu = false;
+        // Optionally re-run search if query exists
+        if (this.query.trim()) {
+          this.runSearch();
+        }
+      },
       /**
        * Performs a geocoding search using the current query.
        */
@@ -93,6 +122,19 @@
       value(newVal) {
         this.query = newVal;
       }
+    },
+    mounted() {
+      // Global click listener to close the provider menu when clicking outside
+      this._clickOutside = (e) => {
+        if (!this.$el.contains(e.target)) {
+          this.showProviderMenu = false;
+          this.showSuggestions = false;
+        }
+      };
+      document.addEventListener("pointerdown", this._clickOutside, true);
+    },
+    unmounted() {
+      document.removeEventListener("pointerdown", this._clickOutside, true);
     }
   };
 })();

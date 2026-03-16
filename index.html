@@ -373,18 +373,49 @@
   <!-- Template for PlaceSearch.js -->
   <script type="text/x-template" id="place-search-template">
     <div class="relative" :class="containerClass">
-      <input
-        v-model="query"
-        @input="onInput"
-        @focus="showSuggestions = true"
-        @keydown.down.prevent="moveSelection(1)"
-        @keydown.up.prevent="moveSelection(-1)"
-        @keydown.enter.prevent="selectHighlighted"
-        @keydown.esc="close"
-        :placeholder="placeholder"
-        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-blue-500 focus:ring-2"
-      />
+      <div class="relative flex items-center">
+        <input
+          v-model="query"
+          @input="onInput"
+          @focus="showSuggestions = true"
+          @keydown.down.prevent="moveSelection(1)"
+          @keydown.up.prevent="moveSelection(-1)"
+          @keydown.enter.prevent="selectHighlighted"
+          @keydown.esc="close"
+          :placeholder="placeholder"
+          class="w-full rounded-lg border border-slate-300 bg-white pl-3 pr-10 py-2 text-sm outline-none ring-blue-500 focus:ring-2"
+        />
+        <!-- Provider Selector Button -->
+        <button
+          type="button"
+          class="absolute right-2 flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-blue-600 transition-all"
+          @click.stop="showProviderMenu = !showProviderMenu"
+          :title="'Search via ' + activeProviderName"
+        >
+          <span class="material-symbols-outlined text-lg leading-none">travel_explore</span>
+        </button>
+      </div>
 
+      <!-- Provider Selection Menu -->
+      <div
+        v-if="showProviderMenu"
+        class="absolute right-0 z-50 mt-1 w-48 rounded-lg border border-slate-200 bg-white p-1 shadow-lg ring-1 ring-black ring-opacity-5 provider-menu-container"
+      >
+        <div class="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">Search Engine</div>
+        <button
+          v-for="(meta, key) in providers"
+          :key="key"
+          type="button"
+          class="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-slate-50"
+          :class="activeProvider === key ? 'text-blue-600 font-semibold bg-blue-50/50' : 'text-slate-700'"
+          @click="selectProvider(key)"
+        >
+          <span>{{ meta.name }}</span>
+          <span v-if="activeProvider === key" class="material-symbols-outlined text-base">check</span>
+        </button>
+      </div>
+
+      <!-- Search Suggestions -->
       <div
         v-if="showSuggestions && suggestions.length"
         class="absolute z-40 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg"
