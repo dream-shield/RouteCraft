@@ -169,7 +169,16 @@
         if (!this.mapLoaded) return;
 
         const activeStopId = this.stops[this.activeIndex]?.id;
-        this.markers = RC.renderMarkers(window.maplibregl, this.map, this.stops, this.markers, activeStopId, this.activeDayId, this.routeColors);
+        this.markers = RC.renderMarkers(
+          window.maplibregl,
+          this.map,
+          this.stops,
+          this.markers,
+          activeStopId,
+          this.activeDayId,
+          this.routeColors,
+          (id) => this.flyToStop(id)
+        );
         RC.refreshRouteLayer(this.map, this.stops, this.activeDayId, this.routeColors, this.routeGeometries, activeStopId);
       },
 
@@ -226,7 +235,7 @@
 
         const stop = this.stops[index];
         this.store.activeIndex = index;
-        
+
         // Ensure the active day is updated to the selected stop's day
         if (stop.dayId) {
           this.store.activeDayId = stop.dayId;
@@ -237,12 +246,12 @@
         if (this.mapLoaded) {
           // Identify previous and next stops for the same day to fit in view
           const stopsToFit = [stop];
-          
+
           if (index > 0) {
             const prev = this.stops[index - 1];
             if (prev.dayId === stop.dayId) stopsToFit.unshift(prev);
           }
-          
+
           if (index < this.stops.length - 1) {
             const next = this.stops[index + 1];
             if (next.dayId === stop.dayId) stopsToFit.push(next);
@@ -348,7 +357,7 @@
             if (item.originalQuery && !item.originalQuery.match(/^---$|^===$/)) {
                dayUpdate.description = item.originalQuery;
             }
-            
+
             this.store.updateDay(currentDayId, dayUpdate);
             this.store.activeDayId = currentDayId; // Focus on the newly updated day
           } else {

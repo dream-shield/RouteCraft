@@ -72,7 +72,7 @@ window.RouteCraft = window.RouteCraft || {};
   function generateDashArraySequence(dashLength = 4, gapLength = 4, resolution = 64) {
     const sequence = [];
     const totalCycle = dashLength + gapLength;
-    
+
     // Build the sequence in reverse to fix the marching direction (forward)
     for (let i = resolution - 1; i >= 0; i--) {
       const s = (i / resolution) * totalCycle;
@@ -101,7 +101,7 @@ window.RouteCraft = window.RouteCraft || {};
   function startAntsAnimation(map, layerId) {
     // If already animating for this map, don't start another loop
     if (animationRegistry.has(map)) return;
-    
+
     animationRegistry.set(map, true);
     let stepIdx = 0;
 
@@ -109,7 +109,7 @@ window.RouteCraft = window.RouteCraft || {};
       if (!map.getStyle() || !map.getLayer(layerId)) {
         // Stop animation if map is unmounted or layer is gone
         animationRegistry.delete(map);
-        return; 
+        return;
       }
 
       // Speed control: ~32ms per step for smooth 30fps+ feel
@@ -157,9 +157,10 @@ window.RouteCraft = window.RouteCraft || {};
    * @param {string|number|null} activeStopId - The ID of the currently active stop.
    * @param {string|null} activeDayId - The ID of the currently active day.
    * @param {string[]} routeColors - Array of hex colors for markers and segments.
+   * @param {Function} onMarkerClick - Callback function when a marker is clicked.
    * @returns {Object[]} The new array of MapLibre Marker instances.
    */
-  window.RouteCraft.renderMarkers = function renderMarkers(maplibregl, map, allStops, existingMarkers, activeStopId, activeDayId, routeColors) {
+  window.RouteCraft.renderMarkers = function renderMarkers(maplibregl, map, allStops, existingMarkers, activeStopId, activeDayId, routeColors, onMarkerClick) {
     existingMarkers.forEach((marker) => marker.remove());
     const markers = [];
 
@@ -186,11 +187,18 @@ window.RouteCraft = window.RouteCraft || {};
 
       markerEl.innerText = label;
 
+      // Attach click listener for selection
+      markerEl.addEventListener('click', (e) => {
+        // Prevent map click events if any
+        e.stopPropagation();
+        if (onMarkerClick) onMarkerClick(stop.id);
+      });
+
       // Highlight logic
       if (stop.id === activeStopId) {
         markerEl.classList.add("is-active");
       }
-      
+
       // Show markers from other days ONLY if no specific day is selected
       if (activeDayId && stop.dayId !== activeDayId) {
         return;
@@ -251,7 +259,7 @@ window.RouteCraft = window.RouteCraft || {};
 
       features.push({
         type: "Feature",
-        properties: { 
+        properties: {
           color: color,
           opacity: styleProps.opacity,
           width: styleProps.width,

@@ -63,7 +63,7 @@ window.RouteCraft = window.RouteCraft || {};
           if (dateMatch) {
             const now = new Date();
             let y, m, d;
-            
+
             // Basic heuristic: if first part is 4 digits, it's year.
             if (dateMatch[1].length === 4) {
               [y, m, d] = [parseInt(dateMatch[1]), parseInt(dateMatch[2]), parseInt(dateMatch[3] || 1)];

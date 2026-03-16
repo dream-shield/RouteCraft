@@ -77,7 +77,7 @@
        */
       async runBulkGeocode() {
         if (!this.bulkText.trim() || this.isGeocoding) return;
-        
+
         this.isGeocoding = true;
         try {
           const results = await RC.ImportService.process(this.bulkText);
@@ -102,7 +102,7 @@
           newStop.searchQuery = place.displayName;
           this.$emit('add-stop', newStop);
         });
-        
+
         // Reset bulk import state
         this.bulkText = '';
         this.detectedPlaces = [];
