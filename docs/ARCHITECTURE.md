@@ -15,6 +15,7 @@ RouteCraft is built as a modular, client-side-only application using a "modern E
 To avoid global scope pollution while maintaining accessibility, the app uses a single global object: `window.RouteCraft`.
 
 - **`js/core/state.js`**: Defines the application's initial data and shared JSDoc types.
+- **`js/core/store.js`**: The central reactive store (Vue `reactive`) that manages the itinerary state and business logic coordination.
 - **`js/core/utils.js`**: Contains general-purpose utility functions (e.g., `debounce`).
 
 ## Services (Business Logic)
@@ -23,10 +24,10 @@ Services reside in `js/services/` and are attached to `window.RouteCraft`. They 
 
 | Service | Responsibility |
 | :--- | :--- |
-| `ItineraryService` | Manages the list of stops (sanitization, adding, reordering, deleting). |
-| `MapService` | Orchestrates MapLibre GL JS (initialization, markers, route layers, camera movement). |
+| `ItineraryService` | Handles sanitization, day creation, and legacy payload migration. |
+| `MapService` | Orchestrates MapLibre GL JS (initialization, markers, route layers, camera movement, and bounds fitting). |
 | `RoutingService` | Interfaces with external APIs (like Stadia Maps) to fetch route geometries. |
-| `SearchService` | Handles location geocoding and search suggestion scoring. |
+| `SearchService` | Modular geocoding engine supporting multiple providers (Nominatim, Photon) with custom scoring. |
 | `KmlService` | Manages KML data generation (export) and parsing (import). |
 | `StorageService` | Handles persistence via `LocalStorage` and `URL Hash` (using LZ-string compression). |
 
@@ -38,22 +39,25 @@ The UI is built with **Vue.js 3** using the **Options API**.
 Components are defined in `js/components/` as plain JavaScript objects. They use X-Templates defined in `index.html` to separate markup from logic.
 
 - **`PlaceCard`**: Displays individual itinerary items (Stops) and provides controls for editing/deleting.
-- **`AddStopMenu`**: A dropdown/overlay for searching and adding new Places.
-- **`SourcePrompt`**: A modal used to resolve data conflicts between local storage and URL parameters.
+- **`DayHeader`**: Manages day-level metadata, collapse state, and selection.
+- **`AddStopMenu`**: A dropdown/overlay for searching and adding new Places (Single or Bulk).
+- **`MultiDayImport`**: Handles complex bulk text parsing and geocoding for entire multi-day trips.
+- **`LocalDataToast`**: A notification to resolve data conflicts between local storage and URL parameters.
+- **`PlaceSearch`**: A reusable search input with provider selection and autocomplete.
 
 ### Application Entry (`js/app.js`)
-The main Vue instance coordinates between the components and services. It maintains the "Single Source of Truth" for the itinerary state and triggers service calls in response to user actions or state changes.
+The main Vue instance coordinates between the components and services. It interacts with the **Reactive Store** as the "Single Source of Truth" and triggers service calls in response to user actions or state changes.
 
 ## Data Flow
 
 1.  **Initialization:**
     - `app.js` checks `StorageService` for data in the URL hash and then `LocalStorage`.
-    - If a conflict exists, `SourcePrompt` is shown.
-    - `ItineraryService` sanitizes the chosen data.
-2.  **State Change:**
-    - User modifies the itinerary (e.g., adds a stop).
-    - `app.js` updates its `stops` array.
-    - A `watch` on the `stops` array triggers `StorageService` to save to LocalStorage and the URL hash.
+    - If a conflict exists, `LocalDataToast` is shown.
+    - `store.loadPayload()` handles migration and sanitization.
+2.  **State Change & Integrity:**
+    - User modifies the itinerary (e.g., adds a stop or changes a day date).
+    - The `store` performs a **Self-Healing Sort** to ensure the global `stops` array is always ordered chronologically by day. This adjacency is critical for routing.
+    - A `watch` on the store triggers `StorageService` to save to LocalStorage and the URL hash.
 3.  **Visual Update:**
     - `app.js` calls `MapService.syncMapData()` to update markers and route lines.
     - Vue's reactivity system automatically updates the sidebar list.
@@ -70,5 +74,6 @@ The application relies on several high-quality libraries via CDN:
 - **Tailwind CSS**: Utility-first styling.
 - **Sortable.js**: Drag-and-drop reordering logic.
 - **LZ-String**: Compression for encoding itinerary data into short URL hashes.
-- **Photon API**: Open-source geocoding and search suggestions.
+- **Nominatim API**: Default geocoding provider for high-quality global ranking.
+- **Photon API**: Alternative geocoding provider for fuzzy/fast autocomplete.
 - **Stadia Maps API**: Routing and route geometry generation.
